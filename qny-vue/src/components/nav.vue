@@ -11,17 +11,7 @@ const logout = () => {
       <span class="system-name">标题</span>
     </div>
 
-    <div class="navbar-right">
-      <div class="user-info-container">
-        <div class="user-info">
-          <span>个人信息</span>
-        </div>
-        <div class="dropdown-menu">
-          <div class="dropdown-item">个人中心</div>
-          <div class="dropdown-item" @click="logout">退出登录</div>
-        </div>
-      </div>
-    </div>
+    <div class="navbar-right"></div>
   </nav>
 </template>
 

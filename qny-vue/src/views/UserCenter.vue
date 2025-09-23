@@ -1,7 +1,7 @@
 <script setup></script>
 
 <template>
-  <div>登录页面</div>
+  <div>个人中心</div>
 </template>
 
 <style lang="scss" scoped></style>

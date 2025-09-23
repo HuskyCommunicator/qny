@@ -1,15 +1,20 @@
 <script setup>
-import { RouterLink, RouterView } from "vue-router";
-import Nav from "@/components/nav.vue";
-import Aside from "@/components/aside.vue";
+import { RouterLink, RouterView, useRoute } from "vue-router";
+import Nav from "@/components/Nav.vue";
+import Aside from "@/components/Aside.vue";
+import { computed } from "vue";
+const route = useRoute();
+const showLayout = computed(() => route.name !== "Login");
 </script>
 
 <template>
   <div class="app-container">
-    <Nav />
+    <!-- <Nav v-if="showLayout" /> -->
     <div class="main-content">
-      <Aside />
-      <RouterView />
+      <Aside v-if="showLayout" />
+      <div class="content-area">
+        <RouterView />
+      </div>
     </div>
   </div>
 </template>
@@ -53,5 +58,8 @@ Aside {
   width: 200px;
   height: 100%;
   background: #f5f5f5;
+}
+.content-area {
+  width: 100%;
 }
 </style>
