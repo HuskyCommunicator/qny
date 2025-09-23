@@ -43,11 +43,11 @@ const handleClose = (key, keyPath) => {
       <span>我的智能体</span>
     </el-menu-item>
     <el-menu-item index="/user-center">
-      <el-icon><setting /></el-icon>
+      <el-icon><User /></el-icon>
       <span>个人中心</span>
     </el-menu-item>
     <el-menu-item index="/chat">
-      <el-icon><setting /></el-icon>
+      <el-icon><ChatSquare /></el-icon>
       <span>聊天</span>
     </el-menu-item>
     <el-menu-item index="/login">
