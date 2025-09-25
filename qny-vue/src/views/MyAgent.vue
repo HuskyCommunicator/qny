@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from "vue-router";
-import AgentCard from "../components/AgentCard.vue";
+import AgentCard from '../components/AgentCard.vue';
 const router = useRouter();
 const myAgents = [
   {
@@ -12,7 +12,32 @@ const myAgents = [
   {
     id: 2,
     name: "编程专家",
-    /* .agent-card styles removed */
+    avatar: "https://placekitten.com/101/101",
+    description: "帮助解决编程问题，支持多种语言",
+  },
+];
+function goCreate() {
+  router.push({ name: "CreateAgent" });
+}
+</script>
+
+<template>
+  <div class="my-agent-page">
+    <h1>我的智能体</h1>
+    <div class="agent-list">
+      <AgentCard
+        v-for="agent in myAgents"
+        :key="agent.id"
+        :name="agent.name"
+        :avatar="agent.avatar"
+        :description="agent.description"
+        :showAction="true"
+        actionText="进入智能体"
+        @action="$router.push({ name: 'Chat', query: { agent: agent.id } })"
+      />
+      <AgentCard add addText="创建智能体" @add="goCreate" />
+    </div>
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -61,7 +86,8 @@ const myAgents = [
     height: 90px;
     border-radius: 50%;
     object-fit: cover;
-  margin-bottom: 18px;
+    margin-bottom: 18px;
+    margin-bottom: 18px;
+  }
 }
 </style>
-margin-bottom: 18px;
