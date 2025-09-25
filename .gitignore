@@ -1,0 +1,22 @@
+# Python虚拟环境
+venv/
+qny-python/venv/
+env/
+ENV/
+
+# Python编译文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 安装包
+*.egg
+*.egg-info
+dist/
+build/
+
+# 其他
+.DS_Store
+Thumbs.db
+*.log
