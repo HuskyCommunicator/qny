@@ -1,0 +1,15 @@
+INFO:     Started server process [4689]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:46640 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40288 - "GET /compare/v1/agents/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41318 - "POST /compare/v1/user/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45602 - "POST /compare/v1/user/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58188 - "GET /compare/v1/user/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40242 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48928 - "GET /compare/v1/agents/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57556 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57556 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50950 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50950 - "GET /openapi.json HTTP/1.1" 200 OK
