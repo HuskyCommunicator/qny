@@ -1,18 +1,52 @@
-"CLAUDE.md"
-"工作记录.md"
-"文档.md"
-".vscode/"
-"__pycache__/"
-"*.pyc"
-".env"
-".env.*"
+# 项目文档
+CLAUDE.md
+工作记录.md
+文档.md
+
+# VSCode配置
+.vscode/
+
+# Python缓存和编译文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 环境配置文件 - 只阻止敏感配置
+.env
+.env.local
+.env.production
+.env.staging
+.env.development.local
+# 允许提交的配置文件模板
+!.env.example
+!.env.template
+!.env.sample
+
+# Python虚拟环境
+venv/
 .venv/
-"*.db"
-"*.sqlite3"
-"__pycache__/"
-"*.pyc"
-".env"
-".env.*"
-"test.db"
-"test.db-journal"
+env/
+.env/
+
+# 数据库文件 - 只阻止测试和SQLite数据库
+test.db*
+test.db-journal
+*.sqlite
+*.sqlite3
+# 注意：允许MySQL数据库文件（*.ibd, *.myd等）和项目特定的数据库文件
+
+# 日志和临时文件
+*.log
+*.tmp
+*.temp
+
+# 备份文件
+*.bak
+*.backup
 *.tar.gz
+*.zip
+
+# 系统文件
+.DS_Store
+Thumbs.db
