@@ -54,10 +54,6 @@ const handleClose = (key, keyPath) => {
       <el-icon><Document /></el-icon>
       <span>聊天历史</span>
     </el-menu-item>
-    <el-menu-item index="/login">
-      <el-icon><setting /></el-icon>
-      <span>登录</span>
-    </el-menu-item>
   </el-menu>
 </template>
 

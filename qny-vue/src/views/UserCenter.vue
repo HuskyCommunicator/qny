@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
+const router = useRouter();
 const user = ref({
   name: "Husky",
   avatar: "https://placekitten.com/120/120",
@@ -8,8 +10,8 @@ const user = ref({
   desc: "热爱AI与前端开发，喜欢探索新技术。",
 });
 function logout() {
-  // 这里只做静态演示
-  alert("已退出登录");
+  localStorage.removeItem("qny-token");
+  router.push("/login");
 }
 </script>
 

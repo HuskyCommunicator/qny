@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { login } from "../api/user";
+import { ElMessage } from "element-plus";
 
 const router = useRouter();
 const isLoginMode = ref(true);
@@ -9,15 +11,33 @@ const password = ref("");
 const confirmPassword = ref("");
 const rememberMe = ref(false);
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (isLoginMode.value) {
     // 登录逻辑
-    localStorage.setItem("qny-token", "mock-token");
-    router.push("/agent-hall");
+    try {
+      const res = await login({
+        username: username.value,
+        password: password.value,
+      });
+
+      if (
+        res &&
+        (res.code === 200 || res.status === 200) &&
+        res.data &&
+        res.data.token
+      ) {
+        localStorage.setItem("qny-token", res.data.token);
+        router.push("/agent-hall");
+      } else {
+        ElMessage.error(res.data?.msg || res.msg || "登录失败");
+      }
+    } catch (err) {
+      ElMessage.error("登录失败，请检查用户名和密码");
+    }
   } else {
     // 注册逻辑
     if (password.value !== confirmPassword.value) {
-      alert("两次密码输入不一致");
+      ElMessage.error("两次密码输入不一致");
       return;
     }
     // 模拟注册成功自动登录

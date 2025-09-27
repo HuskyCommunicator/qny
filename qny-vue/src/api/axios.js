@@ -1,12 +1,10 @@
+import API from "./api";
 import axios from "axios";
-import { ElMessage } from "element-plus";
-import router from "@/router";
-
 const CancelToken = axios.CancelToken;
 const source = CancelToken.source();
 
 const instance = axios.create({
-  baseURL: process.env.VUE_APP_BASE_URL || 'http://localhost:8000',
+  baseURL: API.baseURL,
   timeout: 30000,
   cancelToken: source.token,
   headers: {
