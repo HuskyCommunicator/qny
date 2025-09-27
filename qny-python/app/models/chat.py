@@ -45,6 +45,13 @@ class RoleTemplate(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(64), unique=True, index=True, nullable=False)
     prompt = Column(Text, nullable=False)
+    # 新增字段
+    display_name = Column(String(128), nullable=True)  # 显示名称
+    description = Column(Text, nullable=True)  # 角色介绍
+    avatar_url = Column(String(512), nullable=True)  # 头像URL
+    skills = Column(Text, nullable=True)  # 技能列表（JSON字符串）
+    background = Column(Text, nullable=True)  # 背景故事
+    personality = Column(Text, nullable=True)  # 性格特点
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

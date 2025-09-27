@@ -16,6 +16,6 @@ class UserOut(BaseModel):
     full_name: str | None = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 

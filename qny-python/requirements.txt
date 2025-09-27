@@ -12,5 +12,6 @@ scikit-learn
 numpy
 PyPDF2
 openai
+oss2
 pydantic[email]
 

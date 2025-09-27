@@ -39,6 +39,13 @@ class Settings:
         # Redis 配置
         self.redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+        # 阿里云 OSS 配置
+        self.oss_access_key_id: str = os.getenv("OSS_ACCESS_KEY_ID", "")
+        self.oss_access_key_secret: str = os.getenv("OSS_ACCESS_KEY_SECRET", "")
+        self.oss_endpoint: str = os.getenv("OSS_ENDPOINT", "")
+        self.oss_bucket_name: str = os.getenv("OSS_BUCKET_NAME", "")
+        self.oss_base_url: str = os.getenv("OSS_BASE_URL", "")
+
         # Debug 打印
         print(f"[Config] ENV={self.environment}, DB={self.database_url}")
         print(f"[Config] LLM provider={self.llm_provider}, model={self.llm_model}, base_url={self.llm_base_url}")
