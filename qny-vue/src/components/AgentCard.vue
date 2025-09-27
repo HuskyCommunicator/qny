@@ -5,9 +5,13 @@
       <div class="add-text">{{ addText || "创建智能体" }}</div>
     </template>
     <template v-else>
-      <img :src="avatar" :alt="name" class="avatar" />
-      <h3>{{ name }}</h3>
-      <p>{{ description }}</p>
+      <img :src="avatar_url" :alt="display_name" class="avatar" />
+      <h3>{{ display_name }}</h3>
+      <p class="agent-desc">{{ description }}</p>
+      <div class="agent-personality">
+        <span class="personality-label">性格：</span>
+        <span class="personality-value">{{ personality }}</span>
+      </div>
       <div v-if="showAction" class="agent-action">
         <button @click.stop="onAction">{{ actionText || "进入智能体" }}</button>
       </div>
@@ -17,9 +21,10 @@
 
 <script setup>
 const props = defineProps({
-  name: String,
-  avatar: String,
+  display_name: String,
+  avatar_url: String,
   description: String,
+  personality: String,
   showAction: Boolean,
   actionText: String,
   add: Boolean,
@@ -71,11 +76,23 @@ function handleClick() {
     font-weight: 600;
     letter-spacing: 1px;
   }
-  p {
+  .agent-desc {
     color: #6b7280;
     font-size: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     min-height: 40px;
+  }
+  .agent-personality {
+    font-size: 14px;
+    color: #6366f1;
+    margin-bottom: 16px;
+    .personality-label {
+      font-weight: 500;
+      margin-right: 4px;
+    }
+    .personality-value {
+      font-weight: 400;
+    }
   }
   .agent-action {
     margin-top: 10px;
