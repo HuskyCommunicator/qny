@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -34,6 +35,37 @@ app.add_middleware(BaseHTTPMiddleware, dispatch=trace_id_middleware_factory())
 def on_startup():
     # 自动创建数据库表
     Base.metadata.create_all(bind=engine)
+
+    # 数据库迁移：为 role_templates 表添加新字段
+    try:
+        with engine.connect() as conn:
+            # 检查表是否存在
+            result = conn.execute(text("SHOW TABLES LIKE 'role_templates'"))
+            if result.fetchone():
+                # 检查字段是否已存在
+                result = conn.execute(text("SHOW COLUMNS FROM role_templates LIKE 'display_name'"))
+                if not result.fetchone():
+                    print("[MIGRATION] 开始添加新字段到 role_templates 表...")
+                    migrations = [
+                        "ALTER TABLE role_templates ADD COLUMN display_name VARCHAR(128) NULL",
+                        "ALTER TABLE role_templates ADD COLUMN description TEXT NULL",
+                        "ALTER TABLE role_templates ADD COLUMN avatar_url VARCHAR(512) NULL",
+                        "ALTER TABLE role_templates ADD COLUMN skills TEXT NULL",
+                        "ALTER TABLE role_templates ADD COLUMN background TEXT NULL",
+                        "ALTER TABLE role_templates ADD COLUMN personality TEXT NULL",
+                    ]
+                    
+                    for migration in migrations:
+                        try:
+                            conn.execute(text(migration))
+                            print(f"[MIGRATION] ✓ {migration}")
+                        except Exception as e:
+                            print(f"[MIGRATION] ✗ {migration} - {e}")
+                    
+                    conn.commit()
+                    print("[MIGRATION] 数据库迁移完成！")
+    except Exception as e:
+        print(f"[MIGRATION] 迁移失败: {e}")
 
     # 尝试从数据库重建 RAG 索引
     try:

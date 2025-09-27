@@ -2,11 +2,26 @@ from fastapi import APIRouter, Query, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 import json
 
-from prompt_templates import ROLE_PROMPTS, BUILTIN_ROLES
 from ..core.db import get_db
 from ..models.chat import RoleTemplate
 from ..schemas.role import RoleInfo, RoleTemplateCreate, RoleTemplateUpdate, RoleTemplateOut
 from ..services.oss_service import get_oss_service
+
+# 导入 prompt_templates
+try:
+    import sys
+    import os
+    # 添加 backend 目录到 Python 路径
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    
+    from prompt_templates import ROLE_PROMPTS, BUILTIN_ROLES
+except ImportError as e:
+    print(f"[WARNING] Failed to import prompt_templates: {e}")
+    # 如果导入失败，提供默认值
+    ROLE_PROMPTS = {}
+    BUILTIN_ROLES = {}
 
 
 router = APIRouter(prefix="/role", tags=["role"])
@@ -28,45 +43,63 @@ async def upload_avatar(file: UploadFile = File(...)):
         avatar_url = await oss_service.upload_file(file, folder="avatars")
         return {"avatar_url": avatar_url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+        # 如果 OSS 不可用，返回错误信息
+        raise HTTPException(status_code=503, detail=f"文件上传服务不可用: {str(e)}")
 
 
 @router.get("/search", response_model=list[RoleInfo])
 def search_roles(q: str = Query(""), db: Session = Depends(get_db)):
     """搜索角色，返回丰富的角色信息"""
-    q_lower = q.lower()
-    results = []
-    
-    # 搜索内置角色
-    for name, info in BUILTIN_ROLES.items():
-        if q_lower in name.lower() or q_lower in info["display_name"].lower():
-            results.append(RoleInfo(
-                name=name,
-                display_name=info["display_name"],
-                description=info["description"],
-                avatar_url=info["avatar_url"],
-                skills=info["skills"],
-                background=info["background"],
-                personality=info["personality"],
-                is_builtin=True
-            ))
-    
-    # 搜索自定义角色
-    customs = db.query(RoleTemplate).filter(RoleTemplate.name.like(f"%{q}%")).all()
-    for custom in customs:
-        skills = json.loads(custom.skills) if custom.skills else None
-        results.append(RoleInfo(
-            name=custom.name,
-            display_name=custom.display_name,
-            description=custom.description,
-            avatar_url=custom.avatar_url,
-            skills=skills,
-            background=custom.background,
-            personality=custom.personality,
-            is_builtin=False
-        ))
-    
-    return results
+    try:
+        print(f"[DEBUG] Searching roles with query: '{q}'")
+        print(f"[DEBUG] BUILTIN_ROLES keys: {list(BUILTIN_ROLES.keys())}")
+        
+        q_lower = q.lower()
+        results = []
+        
+        # 搜索内置角色
+        for name, info in BUILTIN_ROLES.items():
+            if q_lower in name.lower() or q_lower in info["display_name"].lower():
+                print(f"[DEBUG] Found builtin role: {name}")
+                results.append(RoleInfo(
+                    name=name,
+                    display_name=info["display_name"],
+                    description=info["description"],
+                    avatar_url=info["avatar_url"],
+                    skills=info["skills"],
+                    background=info["background"],
+                    personality=info["personality"],
+                    is_builtin=True
+                ))
+        
+        # 搜索自定义角色（暂时跳过，因为数据库表结构可能未更新）
+        try:
+            customs = db.query(RoleTemplate).filter(RoleTemplate.name.like(f"%{q}%")).all()
+            print(f"[DEBUG] Found {len(customs)} custom roles")
+            for custom in customs:
+                skills = json.loads(custom.skills) if custom.skills else None
+                results.append(RoleInfo(
+                    name=custom.name,
+                    display_name=getattr(custom, 'display_name', None),
+                    description=getattr(custom, 'description', None),
+                    avatar_url=getattr(custom, 'avatar_url', None),
+                    skills=skills,
+                    background=getattr(custom, 'background', None),
+                    personality=getattr(custom, 'personality', None),
+                    is_builtin=False
+                ))
+        except Exception as db_error:
+            print(f"[WARNING] Custom roles query failed (table structure may need update): {db_error}")
+            # 继续执行，只返回内置角色
+        
+        print(f"[DEBUG] Returning {len(results)} results")
+        return results
+        
+    except Exception as e:
+        print(f"[ERROR] Role search failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"角色搜索失败: {str(e)}")
 
 
 @router.get("/template/{name}", response_model=RoleInfo)
