@@ -1,11 +1,7 @@
 "CLAUDE.md" 
-"������¼.md" 
-"�����ĵ�.md" 
 ".vscode/" 
 "__pycache__/" 
 "*.pyc" 
 ".env" 
 ".env.*" 
 .venv/
-__pycache__/
-*.pyc
