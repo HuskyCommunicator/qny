@@ -1,7 +1,7 @@
 <script setup>
+import { sendChatTextAPI } from "../api/agent";
 import { useRoute } from "vue-router";
-import { ref, onMounted } from "vue";
-
+import { ref } from "vue";
 const route = useRoute();
 const agentId = route.query.agent;
 const agents = [
@@ -19,10 +19,26 @@ const input = ref("");
 
 function send() {
   if (!input.value.trim()) return;
-  messages.value.push({ from: "user", text: input.value });
-  setTimeout(() => {
-    messages.value.push({ from: "agent", text: "收到：" + input.value });
-  }, 600);
+  const userMsg = input.value;
+  messages.value.push({ from: "user", text: userMsg });
+  // 构造会话id（简单用时间戳）
+  const conversation_id = String(Date.now());
+  sendChatTextAPI({
+    role: "harry_potter",
+    content: userMsg,
+    conversation_id,
+  })
+    .then((res) => {
+      // 后端返回 { content: "xxx" }
+      setTimeout(() => {
+        messages.value.push({ from: "agent", text: res.content || "(无回复)" });
+      }, 3000); // 增加等待时间
+    })
+    .catch(() => {
+      setTimeout(() => {
+        messages.value.push({ from: "agent", text: "对话失败，请重试。" });
+      }, 5000);
+    });
   input.value = "";
 }
 </script>
