@@ -1,3 +1,4 @@
+// ...existing code...
 import { createRouter, createWebHistory } from "vue-router";
 
 const router = createRouter({
@@ -35,6 +36,18 @@ const router = createRouter({
       path: "/chat",
       name: "Chat",
       component: () => import("../views/Chat.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/chat-history",
+      name: "ChatHistory",
+      component: () => import("../views/ChatHistory.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/create-agent",
+      name: "CreateAgent",
+      component: () => import("../views/CreateAgent.vue"),
       meta: { requiresAuth: true },
     },
   ],

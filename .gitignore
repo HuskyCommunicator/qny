@@ -1,0 +1,8 @@
+"CLAUDE.md" 
+"工作记录.md" 
+"开发文档.md" 
+".vscode/" 
+"__pycache__/" 
+"*.pyc" 
+".env" 
+".env.*" 

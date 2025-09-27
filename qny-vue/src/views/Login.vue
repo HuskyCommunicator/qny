@@ -1,28 +1,67 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { loginAPI, registerAPI } from "../api/user";
+import { ElMessage } from "element-plus";
+import { useUserStore } from "../stores/user";
 
 const router = useRouter();
+const userStore = useUserStore();
 const isLoginMode = ref(true);
 const username = ref("");
 const password = ref("");
-const confirmPassword = ref("");
+// 已删除确认密码逻辑
+const email = ref("");
 const rememberMe = ref(false);
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (isLoginMode.value) {
     // 登录逻辑
-    localStorage.setItem("qny-token", "mock-token");
-    router.push("/agent-hall");
+    try {
+      const res = await loginAPI({
+        username: username.value,
+        password: password.value,
+      });
+
+      if (
+        res &&
+        (res.code === 200 || res.status === 200) &&
+        res.data &&
+        res.data.token
+      ) {
+        userStore.setUserInfo({
+          username: username.value,
+          token: res.data.token,
+        });
+        router.push("/agent-hall");
+      } else {
+        ElMessage.error(res.data?.msg || res.msg || "登录失败");
+      }
+    } catch (err) {
+      ElMessage.error("登录失败，请检查用户名和密码");
+    }
   } else {
     // 注册逻辑
-    if (password.value !== confirmPassword.value) {
-      alert("两次密码输入不一致");
-      return;
+    // 已删除确认密码校验
+    try {
+      const res = await registerAPI({
+        username: username.value,
+        password: password.value,
+        email: email.value,
+        full_name: username?.value,
+      });
+      if (res && (res.code === 200 || res.status === 200)) {
+        ElMessage.success(res.msg || "注册成功");
+        // 注册成功后跳转到登录页面，并自动填充账号密码
+        isLoginMode.value = true;
+        // 保留注册时输入的用户名和密码
+        // router.push("/login"); // 不需要跳转，直接切换模式即可
+      } else {
+        ElMessage.error(res.msg || "注册失败");
+      }
+    } catch (err) {
+      ElMessage.error("注册失败，请重试");
     }
-    // 模拟注册成功自动登录
-    localStorage.setItem("qny-token", "mock-token");
-    router.push("/agent-hall");
   }
 };
 
@@ -30,7 +69,7 @@ const toggleMode = () => {
   isLoginMode.value = !isLoginMode.value;
   username.value = "";
   password.value = "";
-  confirmPassword.value = "";
+  email.value = "";
 };
 </script>
 
@@ -61,14 +100,15 @@ const toggleMode = () => {
         </div>
 
         <div class="form-group" v-if="!isLoginMode">
-          <label for="confirmPassword">确认密码</label>
+          <label for="email">邮箱</label>
           <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            placeholder="请再次输入密码"
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="请输入邮箱"
           />
         </div>
+        <!-- 已删除确认密码输入框 -->
 
         <div class="remember-me" v-if="isLoginMode">
           <input id="remember" v-model="rememberMe" type="checkbox" />

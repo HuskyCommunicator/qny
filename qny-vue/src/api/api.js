@@ -1,9 +1,13 @@
-const baseURL = "/compare/v1";
+// const baseURL = "http://116.62.231.58:8000";
+const baseURL = "http://localhost:8000";
 const API = {
-  // 通用接口
-  COMMON: {
-    LOGIN: baseURL + "/user/login", // 用户登录
-    REGISTER: baseURL + "/user/register", // 用户注册
+  // 用户相关接口
+  USER: {
+    INFO: baseURL + "/user/info", // 获取用户信息
+    UPDATE: baseURL + "/user/update", // 更新用户信息
+    REGISTER: baseURL + "/auth/register", // 注册
+    LOGIN: baseURL + "/auth/login", // 登录
+    // 可根据实际需求继续添加
   },
 };
 
