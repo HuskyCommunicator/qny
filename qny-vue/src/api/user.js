@@ -1,7 +1,7 @@
 import request from "./axios";
 import API from "./api";
 
-export const login = (data) => {
+export const loginAPI = (data) => {
   const formData = new FormData();
   for (const key in data) {
     formData.append(key, data[key]);
@@ -16,21 +16,21 @@ export const login = (data) => {
   });
 };
 
-export const register = (data) => {
+export const registerAPI = (data) => {
   return request({
-    url: API.COMMON.REGISTER,
+    url: API.USER.REGISTER,
     method: "post",
     data,
   });
 };
-export const getMyAgents = () => {
+export const getMyAgentsAPI = () => {
   return request({
     url: API.USER.AGENTS,
     method: "get",
   });
 };
 
-export const getChatHistory = (params) => {
+export const getChatHistoryAPI = (params) => {
   return request({
     url: API.USER.CHAT_HISTORY,
     method: "get",
@@ -38,7 +38,7 @@ export const getChatHistory = (params) => {
   });
 };
 
-export const getMySessions = (params) => {
+export const getMySessionsAPI = (params) => {
   return request({
     url: API.USER.SESSIONS,
     method: "get",
@@ -46,7 +46,7 @@ export const getMySessions = (params) => {
   });
 };
 
-export const getChatMessages = (sessionId, params) => {
+export const getChatMessagesAPI = (sessionId, params) => {
   return request({
     url: API.USER.SESSION_MESSAGES.replace(":sessionId", sessionId),
     method: "get",
@@ -54,14 +54,14 @@ export const getChatMessages = (sessionId, params) => {
   });
 };
 
-export const deleteSession = (sessionId) => {
+export const deleteSessionAPI = (sessionId) => {
   return request({
     url: API.USER.DELETE_SESSION.replace(":sessionId", sessionId),
     method: "delete",
   });
 };
 
-export const clearChatHistory = (params) => {
+export const clearChatHistoryAPI = (params) => {
   return request({
     url: API.USER.CHAT_HISTORY,
     method: "delete",

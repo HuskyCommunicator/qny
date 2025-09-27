@@ -1,16 +1,17 @@
 <script setup>
-import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useUserStore } from "../stores/user";
 const router = useRouter();
-const user = ref({
-  name: "Husky",
+const userStore = useUserStore();
+const user = {
+  name: userStore.username,
   avatar: "https://placekitten.com/120/120",
-  email: "husky@example.com",
+  email: userStore.email,
   role: "普通用户",
   desc: "热爱AI与前端开发，喜欢探索新技术。",
-});
+};
 function logout() {
-  localStorage.removeItem("qny-token");
+  userStore.clearUserInfo();
   router.push("/login");
 }
 </script>

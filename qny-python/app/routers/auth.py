@@ -12,11 +12,11 @@ from ..schemas.user import UserCreate, UserOut
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserOut)
+@router.post("/register")
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     existed = db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first()
     if existed:
-        raise HTTPException(status_code=400, detail="用户名或邮箱已存在")
+        return {"code": 400, "msg": "用户名或邮箱已存在", "data": None}
     user = User(
         username=payload.username,
         email=payload.email,
@@ -26,15 +26,25 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    user_out = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "full_name": user.full_name,
+    }
+    return {"code": 200, "msg": "注册成功", "data": user_out}
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+        return {"code": 401, "msg": "用户名或密码错误", "data": None}
     access_token = create_access_token({"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    token_data = {
+        "token": access_token,
+    }
+    return {"code": 200, "msg": "登录成功", "data": token_data}
 
 
