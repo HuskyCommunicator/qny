@@ -1,19 +1,62 @@
 <script setup>
-import { sendChatTextAPI } from "../api/agent";
+import { ElIcon, ElLoading } from "element-plus";
+import { Microphone } from "@element-plus/icons-vue";
+import { ref, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
-import { ref } from "vue";
+import { sendChatTextAPI } from "../api/agent";
+const recognizing = ref(false);
+const showVoiceModal = ref(false);
+let recognition;
+
+if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = "zh-CN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    recognizing.value = true;
+    showVoiceModal.value = true;
+  };
+  recognition.onend = () => {
+    recognizing.value = false;
+    showVoiceModal.value = false;
+  };
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    input.value = transcript;
+    recognizing.value = false;
+    showVoiceModal.value = false;
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) return;
+  if (!recognizing.value) {
+    recognition.start();
+  } else {
+    recognition.stop();
+  }
+}
 const route = useRoute();
-const agentId = route.query.agent;
-const agents = [
-  { id: 1, name: "AI助手", avatar: "https://placekitten.com/100/100" },
-  { id: 2, name: "编程专家", avatar: "https://placekitten.com/101/101" },
-  { id: 3, name: "语言翻译", avatar: "https://placekitten.com/102/102" },
-  { id: 4, name: "心理咨询", avatar: "https://placekitten.com/103/103" },
-];
-const agent = agents.find((a) => a.id == agentId) || agents[0];
+// 入口传递的角色信息
+const agent = {
+  name: route.query.display_name || route.query.name || "AI助手",
+  avatar:
+    route.query.avatar_url ||
+    route.query.avatar ||
+    "https://placekitten.com/100/100",
+  description: route.query.description || "",
+  personality: route.query.personality || "",
+};
 
 const messages = ref([
-  { from: "agent", text: "你好，我是" + agent.name + "，很高兴为你服务！" },
+  {
+    from: "agent",
+    text: `你好，我是${agent.name}${agent.description ? "，" + agent.description : ""}。很高兴为你服务！`,
+  },
 ]);
 const input = ref("");
 
@@ -44,6 +87,19 @@ function send() {
 </script>
 
 <template>
+  <div v-if="showVoiceModal" class="voice-modal">
+    <div class="voice-modal-content">
+      <el-icon style="font-size: 2.8rem; color: #6366f1; margin-bottom: 12px">
+        <Microphone />
+      </el-icon>
+      <el-loading
+        :loading="true"
+        text="语音识别中..."
+        style="margin-bottom: 12px"
+      />
+      <div class="voice-modal-text">正在识别语音...</div>
+    </div>
+  </div>
   <div class="chat-page">
     <div class="chat-header">
       <img :src="agent.avatar" class="chat-avatar" />
@@ -63,11 +119,78 @@ function send() {
     <div class="chat-input-bar">
       <input v-model="input" @keyup.enter="send" placeholder="请输入消息..." />
       <button @click="send">发送</button>
+      <button
+        @click="toggleVoice"
+        class="voice-btn"
+        :class="{ active: recognizing }"
+        style="cursor: pointer"
+      >
+        <el-icon><Microphone /></el-icon>
+      </button>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
+.voice-modal {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  background: rgba(60, 72, 100, 0.08);
+  pointer-events: none;
+}
+.voice-modal-content {
+  max-width: 340px;
+  max-height: 260px;
+  width: 90vw;
+  height: auto;
+  pointer-events: auto;
+}
+.voice-modal-content {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 18px;
+  box-shadow: 0 4px 32px rgba(60, 72, 100, 0.12);
+  padding: 38px 48px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.voice-modal-text {
+  font-size: 1.18rem;
+  color: #6366f1;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.voice-btn {
+  background: #fff;
+  color: #6366f1;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-left: 8px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+  cursor: pointer !important;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  border: 2px solid #e0e7ff;
+}
+.voice-btn.active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
 .chat-page {
   display: flex;
   flex-direction: column;
