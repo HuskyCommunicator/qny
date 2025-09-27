@@ -1,194 +1,202 @@
-from typing import List, Generator
-import json
+from typing import List
+from datetime import datetime
+import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..core.db import get_db
-from ..schemas.chat import ChatRequest, ChatResponse
+from ..core.security import get_current_user
+from ..models.user import User
+from ..schemas.chat import (
+    ChatRequest, ChatResponse, ChatSessionCreate,
+    ChatMessageCreate, ChatHistoryRequest, ChatHistoryResponse,
+    ChatSessionResponse, ChatMessageResponse
+)
 from ..services.llm_service import generate_reply
 from ..services.stt_service import transcribe_audio
 from ..services.tts_service import synthesize_speech
-from ..services.memory_service import get_recent_context, append_turn, clear_context
-from ..services.rag_service import rag
-from ..models.chat import Conversation, ChatMessage
-from ..models.user import User
-from ..core.config import settings
-from ..core.security import get_current_user
-from prompt_templates import build_prompt
+from ..services.chat_service import ChatService
+from ..services.growth_service import GrowthService
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def get_chat_service(db: Session = Depends(get_db)) -> ChatService:
+    return ChatService(db)
+
+
 @router.post("/text", response_model=ChatResponse)
-def chat_text(payload: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 简化：此处从请求体/外层中获取 user_id，生产中建议从 token 解出
-    # 若没有 conversation 则创建
-    conversation = None
-    if payload.conversation_id:
-        conversation = db.query(Conversation).filter(Conversation.id == payload.conversation_id).first()
-    if conversation is None:
-        conversation = Conversation(user_id=current_user.id, role=payload.role, title=None)
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
+def chat_text(
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """文本聊天接口，自动保存聊天历史"""
+    try:
+        user_id = current_user.id
 
+        # 输入验证
+        if not payload.content or not payload.content.strip():
+            raise HTTPException(status_code=422, detail="消息内容不能为空")
+
+        # 获取或创建会话
+        session_id = payload.session_id
+        if not session_id:
+            # 创建新会话
+            session_data = ChatSessionCreate(role_id=payload.role_id)
+            session = chat_service.create_session(user_id, session_data)
+            session_id = session.session_id
+        else:
+            # 验证会话是否存在
+            session = chat_service.get_session(session_id, user_id)
+            if not session:
+                raise HTTPException(status_code=404, detail="会话不存在")
+
+        # 保存用户消息
+        user_message = ChatMessageCreate(
+            session_id=session_id,
+            role_id=payload.role_id,
+            content=payload.content.strip(),
+            is_user_message=True
+        )
+        chat_service.save_message(user_message, user_id)
+
+        # 获取会话历史用于AI回复（限制上下文长度以提高性能）
+        session_messages = chat_service.get_session_messages(session_id, user_id, limit=10)
+        messages = []
+        for msg in session_messages:
+            role = "user" if msg.is_user_message else "assistant"
+            messages.append({"role": role, "content": msg.content})
+
+        # 生成AI回复（传入角色ID和数据库会话）
+        reply = generate_reply(messages, payload.role_id, db)
+
+        # 保存AI回复
+        assistant_message = ChatMessageCreate(
+            session_id=session_id,
+            role_id=payload.role_id,
+            content=reply,
+            is_user_message=False
+        )
+        chat_service.save_message(assistant_message, user_id)
+
+        # 记录对话并计算成长
+        growth_service = GrowthService(db)
+        growth_service.record_conversation(payload.role_id, user_id, session_id)
+
+        return ChatResponse(role="assistant", content=reply, session_id=session_id)
+
+    except HTTPException:
+        # 重新抛出HTTP异常
+        raise
+    except Exception as e:
+        # 记录错误日志
+        import logging
+        logging.error(f"聊天接口错误: {str(e)}")
+        raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+@router.post("/session", response_model=ChatSessionResponse)
+def create_session(
+    session_data: ChatSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """创建新的聊天会话"""
     user_id = current_user.id
-    recent = get_recent_context(user_id, conversation.id, limit=10)
-    # RAG 检索（可配置 Top-K）
-    rag_hits = rag.search(payload.content, top_k=3)
-    rag_context = "\n\n".join([f"[DOC:{doc_id}] {text}" for doc_id, text, score in rag_hits])
+    session = chat_service.create_session(user_id, session_data)
+    return session
 
-    messages: List[dict] = recent + [{"role": "user", "content": payload.content}]
-    # 将 Redis 历史转为 build_prompt 期望的结构
-    history_pairs = []
-    # 修复：正确解析历史对话，按 role 分组
-    current_user_msg = ""
-    current_assistant_msg = ""
-    
-    for msg in recent:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role == "user":
-            current_user_msg = content
-        elif role == "assistant":
-            current_assistant_msg = content
-            # 当有完整的 user-assistant 对时，添加到历史
-            if current_user_msg and current_assistant_msg:
-                history_pairs.append({
-                    "user": current_user_msg, 
-                    "assistant": current_assistant_msg
-                })
-                current_user_msg = ""
-                current_assistant_msg = ""
-    
-    retrieved_docs = [text for _, text, _ in rag_hits]
-    full_prompt = build_prompt(payload.role, payload.content, history_pairs, retrieved_docs)
-    
-    # 调试日志
-    print(f"[DEBUG] Recent context: {len(recent)} messages")
-    print(f"[DEBUG] History pairs: {len(history_pairs)} pairs")
-    print(f"[DEBUG] First history pair: {history_pairs[0] if history_pairs else 'None'}")
-    
-    # 生成回复
-    reply = generate_reply(
-        messages=messages, 
-        full_prompt=full_prompt,
-        role=payload.role,
-        user_message=payload.content,
-        history=history_pairs,
-        retrieved_docs=retrieved_docs
+
+@router.get("/sessions", response_model=List[ChatSessionResponse])
+def get_sessions(
+    role_id: int = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """获取用户的聊天会话列表"""
+    user_id = current_user.id
+    sessions = chat_service.get_user_sessions(user_id, role_id, limit, offset)
+    return sessions
+
+
+@router.get("/session/{session_id}/messages", response_model=List[ChatMessageResponse])
+def get_session_messages(
+    session_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """获取会话的消息列表"""
+    user_id = current_user.id
+    messages = chat_service.get_session_messages(session_id, user_id, limit, offset)
+    return messages
+
+
+@router.post("/history", response_model=ChatHistoryResponse)
+def get_chat_history(
+    request: ChatHistoryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """获取聊天历史"""
+    user_id = current_user.id
+    history = chat_service.get_chat_history(user_id, request)
+    return ChatHistoryResponse(
+        sessions=history["sessions"],
+        messages=history["messages"],
+        total=history["total"]
     )
 
-    # 持久化到 MySQL
-    db.add(ChatMessage(conversation_id=conversation.id, user_id=user_id, role="user", content=payload.content))
-    db.add(ChatMessage(conversation_id=conversation.id, user_id=user_id, role="assistant", content=reply))
-    db.commit()
 
-    # 更新短期记忆
-    append_turn(user_id, conversation.id, "user", payload.content)
-    append_turn(user_id, conversation.id, "assistant", reply)
+@router.delete("/session/{session_id}")
+def delete_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """删除聊天会话"""
+    user_id = current_user.id
+    success = chat_service.delete_session(session_id, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="会话不存在或无权限删除")
+    return {"message": "会话删除成功"}
 
-    return ChatResponse(role="assistant", content=reply, conversation_id=conversation.id)
 
-
-@router.post("/text/stream")
-def chat_text_stream(payload: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """流式聊天接口 - 实时输出 LLM 回复"""
-    # 获取或创建对话
-    conversation = None
-    if payload.conversation_id:
-        conversation = db.query(Conversation).filter(Conversation.id == payload.conversation_id).first()
-    if conversation is None:
-        conversation = Conversation(user_id=current_user.id, role=payload.role, title=None)
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
+@router.put("/session/{session_id}/title")
+def update_session_title(
+    session_id: str,
+    title_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    chat_service: ChatService = Depends(get_chat_service)
+):
+    """更新会话标题"""
+    title = title_data.get("title")
+    if not title:
+        raise HTTPException(status_code=422, detail="标题不能为空")
 
     user_id = current_user.id
-    recent = get_recent_context(user_id, conversation.id, limit=10)
-    
-    # RAG 检索
-    rag_hits = rag.search(payload.content, top_k=3)
-    rag_context = "\n\n".join([f"[DOC:{doc_id}] {text}" for doc_id, text, score in rag_hits])
-
-    # 构建历史对话对
-    history_pairs = []
-    current_user_msg = ""
-    current_assistant_msg = ""
-    
-    for msg in recent:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role == "user":
-            current_user_msg = content
-        elif role == "assistant":
-            current_assistant_msg = content
-            if current_user_msg and current_assistant_msg:
-                history_pairs.append({
-                    "user": current_user_msg, 
-                    "assistant": current_assistant_msg
-                })
-                current_user_msg = ""
-                current_assistant_msg = ""
-    
-    retrieved_docs = [text for _, text, _ in rag_hits]
-    full_prompt = build_prompt(payload.role, payload.content, history_pairs, retrieved_docs)
-    
-    def generate_stream() -> Generator[str, None, None]:
-        """生成流式响应"""
-        full_reply = ""
-        
-        try:
-            # 调用流式 LLM 生成
-            for chunk in generate_reply_stream(
-                messages=[{"role": "user", "content": payload.content}],
-                full_prompt=full_prompt,
-                role=payload.role,
-                user_message=payload.content,
-                history=history_pairs,
-                retrieved_docs=retrieved_docs
-            ):
-                if chunk:
-                    full_reply += chunk
-                    # 发送 SSE 格式的数据
-                    yield f"data: {json.dumps({'content': chunk, 'conversation_id': conversation.id}, ensure_ascii=False)}\n\n"
-            
-            # 发送结束标记
-            yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id}, ensure_ascii=False)}\n\n"
-            
-        except Exception as e:
-            # 发送错误信息
-            yield f"data: {json.dumps({'error': str(e), 'conversation_id': conversation.id}, ensure_ascii=False)}\n\n"
-            return
-        
-        # 保存完整对话到数据库
-        try:
-            db.add(ChatMessage(conversation_id=conversation.id, user_id=user_id, role="user", content=payload.content))
-            db.add(ChatMessage(conversation_id=conversation.id, user_id=user_id, role="assistant", content=full_reply))
-            db.commit()
-            
-            # 更新短期记忆
-            append_turn(user_id, conversation.id, "user", payload.content)
-            append_turn(user_id, conversation.id, "assistant", full_reply)
-        except Exception as e:
-            print(f"[ERROR] Failed to save conversation: {e}")
-
-    return StreamingResponse(
-        generate_stream(),
-        media_type="text/plain",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Content-Type": "text/event-stream",
-        }
-    )
+    session = chat_service.update_session_title(session_id, user_id, title)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在或无权限修改")
+    return session
 
 
 @router.post("/stt")
 async def speech_to_text(file: UploadFile = File(...)):
+    """语音转文字"""
     data = await file.read()
     text = transcribe_audio(data)
     return {"text": text}
@@ -196,14 +204,8 @@ async def speech_to_text(file: UploadFile = File(...)):
 
 @router.post("/tts")
 def text_to_speech(payload: ChatRequest):
+    """文字转语音"""
     audio_bytes = synthesize_speech(payload.content)
     return {"audio_base64": audio_bytes.decode("utf-8")}
-
-
-@router.post("/clear")
-def clear_conversation(payload: ChatRequest, current_user: User = Depends(get_current_user)):
-    if payload.conversation_id is not None:
-        clear_context(current_user.id, payload.conversation_id)
-    return {"ok": True}
 
 

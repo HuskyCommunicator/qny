@@ -6,6 +6,7 @@
 from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
 from app.models import Role, User
+from app.services.growth_service import GrowthService
 from prompt_templates import ROLE_TEMPLATES
 
 
@@ -48,7 +49,16 @@ def init_template_roles():
             print(f"创建角色: {template.name}")
 
         db.commit()
-        print("角色模板初始化完成")
+
+        # 初始化角色技能数据
+        growth_service = GrowthService(db)
+        roles = db.query(Role).all()
+        for role in roles:
+            # 初始化技能
+            growth_service.initialize_role_skills(role.id, role.name)
+            print(f"初始化角色 '{role.name}' 的技能数据")
+
+        print("角色模板和技能初始化完成")
 
     except Exception as e:
         db.rollback()

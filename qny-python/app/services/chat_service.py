@@ -117,13 +117,29 @@ class ChatService:
         else:
             # 获取用户的会话列表
             sessions = self.get_user_sessions(user_id, request.role_id, request.limit, request.offset)
-            total = self.db.query(ChatSession).filter(ChatSession.user_id == user_id).count()
 
+            # 获取最近的消息用于预览
+            if sessions:
+                # 获取所有会话的session_id
+                session_ids = [s.session_id for s in sessions]
+
+                # 获取最近的消息（按时间排序）
+                messages = self.db.query(ChatMessage).filter(
+                    ChatMessage.session_id.in_(session_ids),
+                    ChatMessage.user_id == user_id
+                ).order_by(ChatMessage.created_at.desc()).limit(request.limit).offset(request.offset).all()
+
+                # 反转顺序，让最新的消息在后面
+                messages = list(reversed(messages))
+
+            # 计算总数
             if request.role_id:
                 total = self.db.query(ChatSession).filter(
                     ChatSession.user_id == user_id,
                     ChatSession.role_id == request.role_id
                 ).count()
+            else:
+                total = self.db.query(ChatSession).filter(ChatSession.user_id == user_id).count()
 
         return {
             "sessions": sessions,
