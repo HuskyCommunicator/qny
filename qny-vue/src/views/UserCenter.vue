@@ -1,4 +1,5 @@
 <script setup>
+import { ElAvatar } from "element-plus";
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { getMeInfoAPI } from "../api/user";
@@ -8,7 +9,7 @@ const user = ref({
   username: "",
   full_name: "",
   email: "",
-  avatar: "https://placekitten.com/120/120",
+  avatar: "https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png",
 });
 
 async function fetchUserInfo() {
@@ -36,12 +37,24 @@ onMounted(() => {
   <div class="user-center-bg">
     <div class="user-center-card">
       <div class="user-avatar-box">
-        <img :src="user.avatar" class="user-avatar" />
+        <el-avatar
+          :size="110"
+          src="https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png"
+        />
       </div>
       <div class="user-info">
-        <div class="user-name">用户名：{{ user.username }}</div>
-        <div class="user-fullname">全名：{{ user.full_name || "未填写" }}</div>
-        <div class="user-email">邮箱：{{ user.email }}</div>
+        <div class="user-fullname">
+          <span class="label">昵称：</span>
+          <span class="value">{{ user.full_name || "未填写" }}</span>
+        </div>
+        <div class="user-name">
+          <span class="label">用户名：</span>
+          <span class="value">{{ user.username }}</span>
+        </div>
+        <div class="user-email">
+          <span class="label">邮箱：</span>
+          <span class="value">{{ user.email }}</span>
+        </div>
       </div>
       <div class="user-actions">
         <button class="logout-btn" @click="logout">退出登录</button>
@@ -81,20 +94,50 @@ onMounted(() => {
   background: #f8fafc;
 }
 .user-info {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 28px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto 28px auto;
 }
-.user-name {
-  font-size: 1.5rem;
-  font-weight: 700;
+.user-fullname,
+.user-name,
+.user-email {
+  justify-content: center;
+}
+.user-fullname,
+.user-name,
+.user-email {
+  display: flex;
+  align-items: center;
+  font-size: 1.18rem;
   color: #3b3b5c;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
+  font-weight: 500;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 2px 8px rgba(60, 72, 100, 0.04);
 }
-.user-role {
-  font-size: 1.08rem;
+.label {
+  width: 80px;
   color: #6366f1;
-  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 1.08rem;
+  margin-right: 12px;
+  text-align: right;
 }
+.value {
+  flex: 1;
+  font-size: 1.18rem;
+  color: #22223b;
+  font-weight: 500;
+  word-break: break-all;
+}
+// ...existing code...
 .user-email {
   color: #6b7280;
   font-size: 1rem;

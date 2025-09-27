@@ -1,3 +1,11 @@
+// 发送文本对话
+export const sendChatTextAPI = (data) => {
+  return request({
+    url: "http://116.62.231.58:8000/chat/text",
+    method: "post",
+    data,
+  });
+};
 import request from "./axios";
 import API from "./api";
 
