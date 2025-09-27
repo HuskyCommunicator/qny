@@ -7,5 +7,10 @@ python-dotenv
 SQLAlchemy>=1.4
 pydantic
 PyMySQL
+redis
+scikit-learn
+numpy
+PyPDF2
+openai
 pydantic[email]
 

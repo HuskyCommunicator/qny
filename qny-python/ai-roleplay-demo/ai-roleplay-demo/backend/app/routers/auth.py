@@ -7,6 +7,34 @@ from ..core.security import create_access_token, verify_password, get_password_h
 from ..models.user import User
 from ..schemas.auth import Token
 from ..schemas.user import UserCreate, UserOut
+from ..core.config import settings
+import time
+from datetime import datetime, timedelta
+
+# 简单内存失败计数（生产建议使用 Redis 等）
+_FAILED_LOGIN: dict[str, dict] = {}
+
+
+def _is_locked(username: str) -> bool:
+    meta = _FAILED_LOGIN.get(username)
+    if not meta:
+        return False
+    locked_until: datetime | None = meta.get("lock_until")
+    return bool(locked_until and locked_until > datetime.utcnow())
+
+
+def _register_failure(username: str) -> None:
+    meta = _FAILED_LOGIN.get(username) or {"count": 0, "lock_until": None}
+    meta["count"] = int(meta.get("count", 0)) + 1
+    if meta["count"] >= settings.login_max_attempts:
+        meta["lock_until"] = datetime.utcnow() + timedelta(minutes=settings.login_lockout_minutes)
+        meta["count"] = 0
+    _FAILED_LOGIN[username] = meta
+
+
+def _reset_failure(username: str) -> None:
+    if username in _FAILED_LOGIN:
+        _FAILED_LOGIN.pop(username, None)
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -32,8 +60,20 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
+    # 模拟延迟防止暴力枚举
+    if settings.login_delay_ms > 0:
+        time.sleep(settings.login_delay_ms / 1000.0)
+
+    # 账户锁定检查（即使用户不存在，也走相同流程，避免信息泄露）
+    if _is_locked(form_data.username):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="账号暂时锁定，请稍后再试")
+
     if not user or not verify_password(form_data.password, user.hashed_password):
+        _register_failure(form_data.username)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号已被禁用")
+    _reset_failure(form_data.username)
     access_token = create_access_token({"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
