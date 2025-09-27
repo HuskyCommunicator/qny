@@ -18,7 +18,7 @@ const instance = axios.create({
 instance.interceptors.request.use(
   async (config) => {
     // 添加Authorization token到请求头
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("qny-token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -64,8 +64,6 @@ instance.interceptors.response.use(
       }
     } else if (error.request) {
       ElMessage.error("网络连接失败");
-    } else {
-      ElMessage.error("请求配置错误");
     }
 
     // 如果是取消的请求，不显示错误

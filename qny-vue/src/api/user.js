@@ -16,17 +16,19 @@ export const loginAPI = (data) => {
   });
 };
 
+// 获取个人信息（/me接口）
+export const getMeInfoAPI = () => {
+  return request({
+    url: API.USER.ME,
+    method: "get",
+  });
+};
+
 export const registerAPI = (data) => {
   return request({
     url: API.USER.REGISTER,
     method: "post",
     data,
-  });
-};
-export const getMyAgentsAPI = () => {
-  return request({
-    url: API.USER.AGENTS,
-    method: "get",
   });
 };
 

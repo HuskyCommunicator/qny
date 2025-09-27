@@ -1,24 +1,30 @@
 <script setup>
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import AgentCard from '../components/AgentCard.vue';
+import AgentCard from "../components/AgentCard.vue";
+import { getMyAgentsAPI } from "../api/agent";
+
 const router = useRouter();
-const myAgents = [
-  {
-    id: 1,
-    name: "AI助手",
-    avatar: "https://placekitten.com/100/100",
-    description: "全能助手，可以回答各种问题",
-  },
-  {
-    id: 2,
-    name: "编程专家",
-    avatar: "https://placekitten.com/101/101",
-    description: "帮助解决编程问题，支持多种语言",
-  },
-];
+const myAgents = ref([]);
+
 function goCreate() {
   router.push({ name: "CreateAgent" });
 }
+
+async function fetchAgents() {
+  try {
+    const res = await getMyAgentsAPI();
+    myAgents.value = res.data;
+    console.log(myAgents.value);
+  } catch (e) {
+    // 可根据需要做错误处理
+    myAgents.value = [];
+  }
+}
+
+onMounted(() => {
+  fetchAgents();
+});
 </script>
 
 <template>

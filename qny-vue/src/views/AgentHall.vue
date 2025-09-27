@@ -1,31 +1,25 @@
 <script setup>
+import { ref, onMounted } from "vue";
 import AgentCard from "../components/AgentCard.vue";
-const agents = [
-  {
-    id: 1,
-    name: "AI助手",
-    avatar: "https://placekitten.com/100/100",
-    description: "全能助手，可以回答各种问题",
-  },
-  {
-    id: 2,
-    name: "编程专家",
-    avatar: "https://placekitten.com/101/101",
-    description: "帮助解决编程问题，支持多种语言",
-  },
-  {
-    id: 3,
-    name: "语言翻译",
-    avatar: "https://placekitten.com/102/102",
-    description: "多语言翻译，支持实时对话",
-  },
-  {
-    id: 4,
-    name: "心理咨询",
-    avatar: "https://placekitten.com/103/103",
-    description: "提供心理健康支持和咨询",
-  },
-];
+import { getAgentListAPI } from "../api/agent";
+
+const agents = ref([]);
+
+async function fetchAgents() {
+  try {
+    const res = await getAgentListAPI();
+    // 这里假设后端返回的数据结构为 { results: [...] }
+    console.log(res);
+
+    agents.value = res.data.results || [];
+  } catch (e) {
+    agents.value = [];
+  }
+}
+
+onMounted(() => {
+  fetchAgents();
+});
 </script>
 
 <template>

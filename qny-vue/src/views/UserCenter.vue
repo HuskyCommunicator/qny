@@ -1,19 +1,35 @@
 <script setup>
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { useUserStore } from "../stores/user";
+import { getMeInfoAPI } from "../api/user";
+
 const router = useRouter();
-const userStore = useUserStore();
-const user = {
-  name: userStore.username,
+const user = ref({
+  username: "",
+  full_name: "",
+  email: "",
   avatar: "https://placekitten.com/120/120",
-  email: userStore.email,
-  role: "普通用户",
-  desc: "热爱AI与前端开发，喜欢探索新技术。",
-};
+});
+
+async function fetchUserInfo() {
+  try {
+    const res = await getMeInfoAPI();
+    user.value.username = res.username || "";
+    user.value.full_name = res.full_name || "暂无";
+    user.value.email = res.email || "";
+    // 可扩展头像字段
+  } catch (e) {
+    // 可做错误处理
+  }
+}
+
 function logout() {
-  userStore.clearUserInfo();
   router.push("/login");
 }
+
+onMounted(() => {
+  fetchUserInfo();
+});
 </script>
 
 <template>
@@ -23,14 +39,12 @@ function logout() {
         <img :src="user.avatar" class="user-avatar" />
       </div>
       <div class="user-info">
-        <div class="user-name">{{ user.name }}</div>
-        <div class="user-role">{{ user.role }}</div>
-        <div class="user-email">{{ user.email }}</div>
-        <div class="user-desc">{{ user.desc }}</div>
+        <div class="user-name">用户名：{{ user.username }}</div>
+        <div class="user-fullname">全名：{{ user.full_name || "未填写" }}</div>
+        <div class="user-email">邮箱：{{ user.email }}</div>
       </div>
       <div class="user-actions">
         <button class="logout-btn" @click="logout">退出登录</button>
-        <button class="edit-btn">编辑资料</button>
       </div>
     </div>
   </div>
