@@ -38,15 +38,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/login-json", response_model=Token)
-def login_json(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == payload.username).first()
-    if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
-    access_token = create_access_token({"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
 @router.post("/user/login", response_model=Token)
 def user_login(payload: LoginRequest, db: Session = Depends(get_db)):
     """用户登录接口 - JSON格式，前端使用"""
