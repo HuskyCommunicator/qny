@@ -5,7 +5,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
 SQLAlchemy>=1.4
-pydantic >=4.0.0
+pydantic 
 PyMySQL
 redis
 scikit-learn
@@ -14,3 +14,18 @@ PyPDF2
 openai
 oss2
 pydantic[email]
+
+# 语音功能依赖
+requests          # HTTP请求
+pydub            # 音频处理
+baidu-aip        # 百度语音服务
+azure-cognitiveservices-speech  # Azure语音服务
+
+# 新增功能依赖
+pandas           # 数据分析
+scipy            # 科学计算
+matplotlib       # 图表生成
+seaborn          # 统计图表
+plotly           # 交互式图表
+python-jose
+scikit-learn

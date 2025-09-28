@@ -25,6 +25,12 @@ class Role(Base):
     tags = Column(JSON, nullable=True, comment="角色标签")
     category = Column(String(50), nullable=True, comment="角色分类")
 
+    # 角色详细信息字段
+    display_name = Column(String(128), nullable=True, comment="显示名称")
+    skills = Column(Text, nullable=True, comment="技能列表（JSON格式）")
+    background = Column(Text, nullable=True, comment="背景故事")
+    personality = Column(Text, nullable=True, comment="性格特点")
+    
     # 成长系统字段
     level = Column(Integer, default=1, comment="角色等级")
     experience = Column(Integer, default=0, comment="经验值")

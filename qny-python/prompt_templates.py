@@ -204,3 +204,21 @@ def get_all_templates() -> Dict[str, RoleTemplate]:
 
 # 为了向后兼容，保留原有的TEMPLATES字典
 TEMPLATES = {name: template.system_prompt for name, template in ROLE_TEMPLATES.items()}
+
+# 为了兼容旧代码，添加 ROLE_PROMPTS 和 BUILTIN_ROLES
+ROLE_PROMPTS = {name: template.system_prompt for name, template in ROLE_TEMPLATES.items()}
+
+BUILTIN_ROLES = {
+    name: {
+        "name": template.name,
+        "display_name": template.name,
+        "description": template.description,
+        "avatar_url": template.avatar_url,
+        "skills": template.tags or [],
+        "background": template.description,
+        "personality": "AI角色",
+        "category": template.category,
+        "tags": template.tags or []
+    }
+    for name, template in ROLE_TEMPLATES.items()
+}

@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Query, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Query, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, func
+from typing import List
 import json
 
 from ..core.db import get_db
-from ..models.chat import RoleTemplate
-from ..schemas.role import RoleInfo, RoleTemplateCreate, RoleTemplateUpdate, RoleTemplateOut
+from ..core.security import get_current_user
+from ..models.role import Role, UserRole
+from ..models.user import User
+from ..schemas.role import RoleInfo, RoleCreate, RoleUpdate, RoleOut, RoleTemplateOut, RoleTemplate, UserRoleCreate, UserRoleUpdate, UserRoleOut
 from ..services.oss_service import get_oss_service
 
 # 导入 prompt_templates
@@ -74,7 +78,7 @@ def search_roles(q: str = Query(""), db: Session = Depends(get_db)):
         
         # 搜索自定义角色（暂时跳过，因为数据库表结构可能未更新）
         try:
-            customs = db.query(RoleTemplate).filter(RoleTemplate.name.like(f"%{q}%")).all()
+            customs = db.query(Role).filter(Role.name.like(f"%{q}%")).all()
             print(f"[DEBUG] Found {len(customs)} custom roles")
             for custom in customs:
                 skills = json.loads(custom.skills) if custom.skills else None
@@ -120,7 +124,7 @@ def get_role_template(name: str, db: Session = Depends(get_db)):
         )
     
     # 检查自定义角色
-    row = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
+    row = db.query(Role).filter(Role.name == name).first()
     if row:
         skills = json.loads(row.skills) if row.skills else None
         return RoleInfo(
@@ -142,7 +146,7 @@ def get_role_prompt(name: str, db: Session = Depends(get_db)):
     """获取角色 Prompt 模板（仅返回 prompt 文本）"""
     template = ROLE_PROMPTS.get(name)
     if template is None:
-        row = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
+        row = db.query(Role).filter(Role.name == name).first()
         if row:
             template = row.prompt
         else:
@@ -150,15 +154,15 @@ def get_role_prompt(name: str, db: Session = Depends(get_db)):
     return {"name": name, "prompt": template}
 
 
-@router.post("/template", response_model=RoleTemplateOut)
-def create_role_template(payload: RoleTemplateCreate, db: Session = Depends(get_db)):
+@router.post("/template", response_model=RoleOut)
+def create_role_template(payload: RoleCreate, db: Session = Depends(get_db)):
     """创建角色模板"""
-    existed = db.query(RoleTemplate).filter(RoleTemplate.name == payload.name).first()
+    existed = db.query(Role).filter(Role.name == payload.name).first()
     if existed:
         raise HTTPException(status_code=400, detail="角色名称已存在")
     
     skills_json = json.dumps(payload.skills) if payload.skills else None
-    role = RoleTemplate(
+    role = Role(
         name=payload.name,
         prompt=payload.prompt,
         display_name=payload.display_name,
@@ -174,10 +178,10 @@ def create_role_template(payload: RoleTemplateCreate, db: Session = Depends(get_
     return role
 
 
-@router.put("/template/{name}", response_model=RoleTemplateOut)
-def update_role_template(name: str, payload: RoleTemplateUpdate, db: Session = Depends(get_db)):
+@router.put("/template/{name}", response_model=RoleOut)
+def update_role_template(name: str, payload: RoleUpdate, db: Session = Depends(get_db)):
     """更新角色模板"""
-    role = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
+    role = db.query(Role).filter(Role.name == name).first()
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
     
@@ -204,14 +208,13 @@ def update_role_template(name: str, payload: RoleTemplateUpdate, db: Session = D
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
 
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models import User, Role, UserRole
 from app.schemas import (
     RoleCreate, RoleUpdate, RoleOut, RoleList, RoleSearchParams,
-    UserRoleCreate, UserRoleUpdate, UserRoleOut, RoleTemplate
+    UserRoleCreate, UserRoleUpdate, UserRoleOut
 )
 from app.utils.logger import get_logger
 
@@ -511,7 +514,7 @@ async def delete_user_role(
 
 
 # 角色模板管理接口
-@router.get("/templates", response_model=List[RoleTemplate])
+@router.get("/templates", response_model=List[RoleTemplateOut])
 async def get_all_templates():
     """获取所有角色模板"""
     from prompt_templates import get_all_templates
@@ -534,7 +537,7 @@ async def get_template(template_name: str):
     return template
 
 
-@router.get("/templates/by-category/{category}", response_model=List[RoleTemplate])
+@router.get("/templates/by-category/{category}", response_model=List[RoleTemplateOut])
 async def get_templates_by_category(category: str):
     """按分类获取角色模板"""
     from prompt_templates import get_templates_by_category
@@ -543,7 +546,7 @@ async def get_templates_by_category(category: str):
     return templates
 
 
-@router.get("/templates/search", response_model=List[RoleTemplate])
+@router.get("/templates/search", response_model=List[RoleTemplateOut])
 async def search_templates(q: str = Query(..., min_length=1)):
     """搜索角色模板"""
     from prompt_templates import search_templates

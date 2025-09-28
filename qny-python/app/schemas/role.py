@@ -136,6 +136,66 @@ class RoleSearchParams(BaseModel):
     size: int = Field(20, ge=1, le=100, description="每页数量")
 
 
+class RoleInfo(BaseModel):
+    """角色信息（用于搜索和展示）"""
+    name: str = Field(..., description="角色名称")
+    display_name: Optional[str] = Field(None, description="显示名称")
+    description: Optional[str] = Field(None, description="角色描述")
+    avatar_url: Optional[str] = Field(None, description="头像URL")
+    skills: Optional[List[str]] = Field(None, description="技能列表")
+    background: Optional[str] = Field(None, description="背景故事")
+    personality: Optional[str] = Field(None, description="性格特点")
+    is_builtin: bool = Field(False, description="是否为内置角色")
+    category: Optional[str] = Field(None, description="角色分类")
+    tags: Optional[List[str]] = Field(None, description="角色标签")
+
+
+class RoleTemplateCreate(BaseModel):
+    """创建角色模板的请求数据"""
+    name: constr(min_length=1, max_length=100) = Field(..., description="角色名称")
+    display_name: Optional[constr(max_length=128)] = Field(None, description="显示名称")
+    description: Optional[constr(max_length=500)] = Field(None, description="角色描述")
+    system_prompt: constr(min_length=10, max_length=2000) = Field(..., description="系统提示词")
+    avatar_url: Optional[str] = Field(None, description="头像URL")
+    skills: Optional[str] = Field(None, description="技能列表（JSON字符串）")
+    background: Optional[str] = Field(None, description="背景故事")
+    personality: Optional[str] = Field(None, description="性格特点")
+    category: Optional[constr(max_length=50)] = Field(None, description="角色分类")
+    tags: Optional[List[constr(max_length=20)]] = Field(None, description="角色标签")
+
+
+class RoleTemplateUpdate(BaseModel):
+    """更新角色模板的请求数据"""
+    display_name: Optional[constr(max_length=128)] = Field(None, description="显示名称")
+    description: Optional[constr(max_length=500)] = Field(None, description="角色描述")
+    system_prompt: Optional[constr(min_length=10, max_length=2000)] = Field(None, description="系统提示词")
+    avatar_url: Optional[str] = Field(None, description="头像URL")
+    skills: Optional[str] = Field(None, description="技能列表（JSON字符串）")
+    background: Optional[str] = Field(None, description="背景故事")
+    personality: Optional[str] = Field(None, description="性格特点")
+    category: Optional[constr(max_length=50)] = Field(None, description="角色分类")
+    tags: Optional[List[constr(max_length=20)]] = Field(None, description="角色标签")
+
+
+class RoleTemplateOut(BaseModel):
+    """角色模板响应数据"""
+    id: int
+    name: str
+    display_name: Optional[str]
+    description: Optional[str]
+    system_prompt: str
+    avatar_url: Optional[str]
+    skills: Optional[str]
+    background: Optional[str]
+    personality: Optional[str]
+    category: Optional[str]
+    tags: Optional[List[str]]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class RoleTemplate(BaseModel):
     """角色模板"""
     name: constr(min_length=1, max_length=100) = Field(..., description="角色名称，长度1-100个字符")

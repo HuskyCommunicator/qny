@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -96,52 +97,54 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 def on_startup():
-    # 创建表（最简自动建表）
+    """应用启动时的初始化操作"""
+    logger.info("🚀 开始应用启动初始化...")
+    
+    # 1. 创建所有数据库表
+    logger.info("📋 创建数据库表...")
     Base.metadata.create_all(bind=engine)
+    logger.info("✅ 数据库表创建完成")
 
-    # 数据库迁移：为 role_templates 表添加新字段
+    # 2. 数据库迁移和优化
     try:
         with engine.connect() as conn:
-            # 检查表是否存在
-            result = conn.execute(text("SHOW TABLES LIKE 'role_templates'"))
-            if result.fetchone():
-                # 检查字段是否已存在
-                result = conn.execute(text("SHOW COLUMNS FROM role_templates LIKE 'display_name'"))
-                if not result.fetchone():
-                    print("[MIGRATION] 开始添加新字段到 role_templates 表...")
-                    migrations = [
-                        "ALTER TABLE role_templates ADD COLUMN display_name VARCHAR(128) NULL",
-                        "ALTER TABLE role_templates ADD COLUMN description TEXT NULL",
-                        "ALTER TABLE role_templates ADD COLUMN avatar_url VARCHAR(512) NULL",
-                        "ALTER TABLE role_templates ADD COLUMN skills TEXT NULL",
-                        "ALTER TABLE role_templates ADD COLUMN background TEXT NULL",
-                        "ALTER TABLE role_templates ADD COLUMN personality TEXT NULL",
-                    ]
-                    
-                    for migration in migrations:
-                        try:
-                            conn.execute(text(migration))
-                            print(f"[MIGRATION] ✓ {migration}")
-                        except Exception as e:
-                            print(f"[MIGRATION] ✗ {migration} - {e}")
-                    
-                    conn.commit()
-                    print("[MIGRATION] 数据库迁移完成！")
+            # 检查并创建必要的索引
+            logger.info("🔍 检查数据库索引...")
+            indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON chat_sessions(user_id)",
+                "CREATE INDEX IF NOT EXISTS idx_chat_sessions_role_id ON chat_sessions(role_id)",
+                "CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)",
+                "CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)",
+                "CREATE INDEX IF NOT EXISTS idx_role_skills_role_id ON role_skills(role_id)",
+            ]
+            
+            for index_sql in indexes:
+                try:
+                    conn.execute(text(index_sql))
+                except Exception as e:
+                    logger.warning(f"索引创建跳过: {e}")
+            
+            conn.commit()
+            logger.info("✅ 数据库索引优化完成")
+            
     except Exception as e:
-        print(f"[MIGRATION] 迁移失败: {e}")
+        logger.warning(f"数据库优化过程中出现错误: {e}")
 
-    # 尝试从数据库重建 RAG 索引
+    # 3. 尝试从数据库重建 RAG 索引
     try:
+        from app.models.chat import Document
+        from app.services.rag_service import rebuild_from_db
+        
         with engine.connect() as conn:
             rows = conn.execute(
                 Document.__table__.select().with_only_columns([Document.doc_id, Document.text])
             ).fetchall()
             rebuild_from_db(rows)
+        logger.info("✅ RAG 索引重建完成")
     except Exception as e:
-        # 索引重建失败不影响启动
-        from app.utils.logger import get_logger
-        logger = get_logger("startup")
         logger.warning(f"RAG 索引重建失败: {e}")
+
+    logger.info("🎉 应用启动初始化完成！")
 
 @app.get("/")
 def root():
