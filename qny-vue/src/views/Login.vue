@@ -22,20 +22,15 @@ const handleSubmit = async () => {
         username: username.value,
         password: password.value,
       });
-
-      if (
-        res &&
-        (res.code === 200 || res.status === 200) &&
-        res.data &&
-        res.data.token
-      ) {
+      // 适配后端只返回 access_token 和 token_type
+      if (res && res.access_token) {
         userStore.setUserInfo({
           username: username.value,
-          token: res.data.token,
+          token: res.access_token,
         });
         router.push("/agent-hall");
       } else {
-        ElMessage.error(res.data?.msg || res.msg || "登录失败");
+        ElMessage.error("登录失败，未获取到令牌");
       }
     } catch (err) {
       ElMessage.error("登录失败，请检查用户名和密码");

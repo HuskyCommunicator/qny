@@ -43,13 +43,13 @@ function toggleVoice() {
 const route = useRoute();
 // 入口传递的角色信息
 const agent = {
+  id: route.query.id,
   name: route.query.display_name || route.query.name || "AI助手",
   avatar:
     route.query.avatar_url ||
     route.query.avatar ||
     "https://placekitten.com/100/100",
   description: route.query.description || "",
-  personality: route.query.personality || "",
 };
 
 const messages = ref([
@@ -59,30 +59,40 @@ const messages = ref([
   },
 ]);
 const input = ref("");
+const sessionId = ref(localStorage.getItem("chat-session-id") || "");
 
-function send() {
+async function send() {
   if (!input.value.trim()) return;
   const userMsg = input.value;
   messages.value.push({ from: "user", text: userMsg });
-  // 构造会话id（简单用时间戳）
-  const conversation_id = String(Date.now());
-  sendChatTextAPI({
-    role: "harry_potter",
+  input.value = ""; // 立即清空输入框
+  await nextTick(); // 等待视图刷新
+
+  // 构造请求体
+  const payload = {
+    role: agent.name,
     content: userMsg,
-    conversation_id,
-  })
-    .then((res) => {
-      // 后端返回 { content: "xxx" }
-      setTimeout(() => {
-        messages.value.push({ from: "agent", text: res.content || "(无回复)" });
-      }, 3000); // 增加等待时间
-    })
-    .catch(() => {
-      setTimeout(() => {
-        messages.value.push({ from: "agent", text: "对话失败，请重试。" });
-      }, 5000);
-    });
-  input.value = "";
+    role_id: agent.id,
+  };
+  if (sessionId.value) {
+    payload.session_id = sessionId.value;
+  }
+
+  try {
+    const res = await sendChatTextAPI(payload);
+    // 首次会话，后端返回 session_id，持久化保存
+    if (res.session_id && !sessionId.value) {
+      sessionId.value = res.session_id;
+      localStorage.setItem("chat-session-id", res.session_id);
+    }
+    setTimeout(() => {
+      messages.value.push({ from: "agent", text: res.content || "(无回复)" });
+    }, 1000);
+  } catch (err) {
+    setTimeout(() => {
+      messages.value.push({ from: "agent", text: "对话失败，请重试。" });
+    }, 1500);
+  }
 }
 </script>
 

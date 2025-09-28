@@ -1,5 +1,6 @@
 import API from "./api";
 import axios from "axios";
+import { ElMessage } from "element-plus";
 const CancelToken = axios.CancelToken;
 const source = CancelToken.source();
 
@@ -46,9 +47,14 @@ instance.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
+        case 405:
           ElMessage.error("登录已过期，请重新登录");
           localStorage.removeItem("token");
-          router.push("/login");
+          if (typeof router !== "undefined" && router.push) {
+            router.push("/login");
+          } else {
+            window.location.href = "/login";
+          }
           break;
         case 403:
           ElMessage.error("拒绝访问");

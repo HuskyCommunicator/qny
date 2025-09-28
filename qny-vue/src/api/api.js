@@ -11,9 +11,10 @@ const API = {
   },
   AGENT: {
     MY_AGENTS: baseURL + "/me/agents", // 获取我的智能体列表
-    AGENT_LIST: baseURL + "/role/search", // 获取智能体列表
-    // 可继续扩展其他智能体相关接口
+    AGENT_LIST: baseURL + "/role/list", // 获取智能体列表
+    AGENT_ADD: baseURL + "/role/my/add", // 创建智能体
   },
 };
 
 export default API;
+1;

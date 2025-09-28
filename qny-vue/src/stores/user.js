@@ -2,9 +2,10 @@ import { ref } from "vue";
 import { defineStore } from "pinia";
 
 export const useUserStore = defineStore("user", () => {
-  const username = ref("");
-  const email = ref("");
-  const token = ref("");
+  // 初始化时从 localStorage 读取，保证刷新后登录态不丢失
+  const username = ref(localStorage.getItem("qny-username") || "");
+  const email = ref(localStorage.getItem("qny-email") || "");
+  const token = ref(localStorage.getItem("qny-token") || "");
 
   function setUserInfo({ username: name, email: mail, token: tk }) {
     username.value = name;

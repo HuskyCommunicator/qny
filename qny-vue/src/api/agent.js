@@ -22,4 +22,11 @@ export const getAgentListAPI = () => {
     method: "get",
   });
 };
+export const addAgentAPI = (data) => {
+  return request({
+    url: API.AGENT.AGENT_ADD,
+    method: "post",
+    data,
+  });
+};
 // 可在此文件继续扩展其他智能体相关接口

@@ -5,12 +5,13 @@
       <div class="add-text">{{ addText || "创建智能体" }}</div>
     </template>
     <template v-else>
-      <img :src="avatar_url" :alt="display_name" class="avatar" />
+      <img v-if="avatar_url" :src="avatar_url" class="avatar" />
       <h3>{{ display_name }}</h3>
       <p class="agent-desc">{{ description }}</p>
-      <div class="agent-personality">
-        <span class="personality-label">性格：</span>
-        <span class="personality-value">{{ personality }}</span>
+      <div v-if="skills && skills.length" class="agent-skills">
+        <span v-for="skill in skills" :key="skill" class="skill-tag">{{
+          skill
+        }}</span>
       </div>
       <div v-if="showAction" class="agent-action">
         <button @click.stop="onAction">{{ actionText || "进入智能体" }}</button>
@@ -21,14 +22,42 @@
 
 <script setup>
 const props = defineProps({
-  display_name: String,
-  avatar_url: String,
-  description: String,
-  personality: String,
-  showAction: Boolean,
-  actionText: String,
-  add: Boolean,
-  addText: String,
+  display_name: {
+    type: String,
+    required: true,
+  },
+  avatar_url: {
+    type: String,
+    default: "",
+  },
+  description: {
+    type: String,
+    default: "",
+  },
+  personality: {
+    type: String,
+    default: "",
+  },
+  showAction: {
+    type: Boolean,
+    default: false,
+  },
+  actionText: {
+    type: String,
+    default: "",
+  },
+  add: {
+    type: Boolean,
+    default: false,
+  },
+  addText: {
+    type: String,
+    default: "",
+  },
+  skills: {
+    type: Array,
+    default: () => [],
+  },
 });
 const emit = defineEmits(["action", "add"]);
 function onAction() {
@@ -81,6 +110,18 @@ function handleClick() {
     font-size: 15px;
     margin-bottom: 12px;
     min-height: 40px;
+  }
+  .agent-skills {
+    margin-bottom: 12px;
+    .skill-tag {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #6366f1;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 13px;
+      margin: 0 4px 4px 0;
+    }
   }
   .agent-personality {
     font-size: 14px;

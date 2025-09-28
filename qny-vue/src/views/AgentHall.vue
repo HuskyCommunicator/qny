@@ -11,17 +11,14 @@ const router = useRouter();
 async function fetchAgents() {
   try {
     const res = await getAgentListAPI();
-    // 这里假设后端返回的数据结构为数组
-    agents.value = Array.isArray(res) ? res : res.data?.results || [];
-    // 处理无效图片地址
-    agents.value.forEach((agent) => {
-      if (
-        !agent.avatar_url ||
-        agent.avatar_url.includes("your-oss-domain.com")
-      ) {
-        agent.avatar_url = "https://placekitten.com/100/100";
-      }
-    });
+    // 兼容 roles 或直接数组结构
+    if (Array.isArray(res)) {
+      agents.value = res;
+    } else if (Array.isArray(res.roles)) {
+      agents.value = res.roles;
+    } else {
+      agents.value = [];
+    }
   } catch (e) {
     agents.value = [];
   }
@@ -52,7 +49,7 @@ onMounted(() => {
         :display_name="agent.display_name"
         :avatar_url="agent.avatar_url"
         :description="agent.description"
-        :personality="agent.personality"
+        :skills="agent.skills"
         :showAction="true"
         actionText="进入智能体"
         @action="handleAgentAction(agent)"

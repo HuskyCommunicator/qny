@@ -8,11 +8,17 @@
       </div>
       <div class="form-row">
         <label>描述：</label>
-        <textarea v-model="desc" placeholder="请输入智能体描述"></textarea>
+        <textarea
+          v-model="description"
+          placeholder="请输入智能体描述"
+        ></textarea>
       </div>
       <div class="form-row">
-        <label>头像：</label>
-        <input v-model="avatar" placeholder="请输入头像图片链接" />
+        <label>系统提示：</label>
+        <textarea
+          v-model="system_prompt"
+          placeholder="请输入系统提示词"
+        ></textarea>
       </div>
       <div class="form-row">
         <button @click="submit">创建</button>
@@ -24,13 +30,42 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { addAgentAPI } from "../api/agent";
+
 const router = useRouter();
 const name = ref("");
-const desc = ref("");
-const avatar = ref("");
-function submit() {
-  // 这里只做静态跳转
-  router.push({ name: "MyAgent" });
+const description = ref("");
+const system_prompt = ref("");
+
+async function submit() {
+  if (!name.value) {
+    ElMessage.error("请输入智能体名称");
+    return;
+  }
+  if (!description.value) {
+    ElMessage.error("请输入描述");
+    return;
+  }
+  if (!system_prompt.value) {
+    ElMessage.error("请输入系统提示词");
+    return;
+  }
+  try {
+    const res = await addAgentAPI({
+      name: name.value,
+      description: description.value,
+      system_prompt: system_prompt.value,
+    });
+    if (res && (res.code === 200 || res.status === 200)) {
+      ElMessage.success("创建成功");
+      router.push({ name: "MyAgent" });
+    } else {
+      ElMessage.error(res.msg || "创建失败");
+    }
+  } catch (err) {
+    ElMessage.error("创建失败，请重试");
+  }
 }
 </script>
 

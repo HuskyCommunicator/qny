@@ -117,10 +117,10 @@ onMounted(() => {
   color: #3b3b5c;
   margin-bottom: 12px;
   font-weight: 500;
-  background: #f8fafc;
-  border-radius: 8px;
+  // background: #f8fafc;
+  // border-radius: 8px;
   padding: 8px 16px;
-  box-shadow: 0 2px 8px rgba(60, 72, 100, 0.04);
+  // box-shadow: 0 2px 8px rgba(60, 72, 100, 0.04);
 }
 .label {
   width: 80px;
