@@ -1,0 +1,11 @@
+"CLAUDE.md" 
+".vscode/" 
+"__pycache__/" 
+"*.pyc" 
+".env" 
+".env.*" 
+# Python虚拟环境
+venv/
+.venv/
+env/
+.env/
