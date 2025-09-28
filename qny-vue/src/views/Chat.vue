@@ -221,7 +221,6 @@ onUnmounted(() => {
   </div>
   <div class="chat-page">
     <div class="chat-header">
-      <img :src="agent.avatar" class="chat-avatar" />
       <span class="chat-title">{{ agent.name }}</span>
     </div>
     <div class="chat-body" ref="chatBody">

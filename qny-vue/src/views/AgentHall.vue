@@ -34,8 +34,10 @@ async function handleAgentAction(agent) {
     // 如果角色有ID，直接进入聊天
     if (agent.id) {
       // 检查是否有现有的session_id
-      const existingSessionId = localStorage.getItem(`chat-session-${agent.id}`);
-      
+      const existingSessionId = localStorage.getItem(
+        `chat-session-${agent.id}`
+      );
+
       router.push({
         name: "Chat",
         query: {
@@ -55,7 +57,7 @@ async function handleAgentAction(agent) {
     if (agent.is_builtin) {
       loading.value = true;
       const createdRole = await createRoleFromTemplateAPI(agent.name);
-      
+
       // 创建成功后，使用新创建的角色进入聊天
       router.push({
         name: "Chat",
@@ -100,8 +102,8 @@ onMounted(() => {
     <div v-else class="agent-list">
       <AgentCard
         v-for="agent in agents"
-        :key="agent.id || agent.name"
-        :display_name="agent.display_name"
+        :key="agent.id"
+        :display_name="agent.name"
         :avatar_url="agent.avatar_url"
         :description="agent.description"
         :skills="agent.skills"

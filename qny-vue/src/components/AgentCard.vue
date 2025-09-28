@@ -5,7 +5,7 @@
       <div class="add-text">{{ addText || "创建智能体" }}</div>
     </template>
     <template v-else>
-      <img v-if="avatar_url" :src="avatar_url" class="avatar" />
+      <!-- 头像已移除 -->
       <h3>{{ display_name }}</h3>
       <p class="agent-desc">{{ description }}</p>
       <div v-if="skills && skills.length" class="agent-skills">
@@ -14,7 +14,7 @@
         }}</span>
       </div>
       <div v-if="showAction" class="agent-action">
-        <button @click.stop="onAction">{{ actionText || "进入智能体" }}</button>
+        <button @click.stop="onAction">{{ actionText || "开始聊天" }}</button>
       </div>
     </template>
   </div>
