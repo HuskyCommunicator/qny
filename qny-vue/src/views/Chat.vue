@@ -222,6 +222,9 @@ onUnmounted(() => {
   <div class="chat-page">
     <div class="chat-header">
       <span class="chat-title">{{ agent.name }}</span>
+      <button class="back-hall-btn" @click="$router.push('/')" title="返回大厅">
+        返回大厅
+      </button>
     </div>
     <div class="chat-body" ref="chatBody">
       <div
@@ -403,6 +406,26 @@ onUnmounted(() => {
   box-shadow: 0 2px 12px rgba(60, 72, 100, 0.06);
   border-bottom-left-radius: 18px;
   border-bottom-right-radius: 18px;
+  justify-content: space-between;
+}
+.back-hall-btn {
+  background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+  margin-left: 16px;
+}
+.back-hall-btn:hover {
+  background: linear-gradient(90deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
 }
 .chat-avatar {
   width: 48px;

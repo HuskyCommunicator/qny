@@ -103,12 +103,11 @@ onMounted(() => {
       <AgentCard
         v-for="agent in agents"
         :key="agent.id"
-        :display_name="agent.name"
-        :avatar_url="agent.avatar_url"
+        :display_name="`角色名称：${agent.name || '未命名角色'}`"
         :description="agent.description"
         :skills="agent.skills"
         :showAction="true"
-        :actionText="agent.id ? '进入智能体' : '创建并进入'"
+        :actionText="'开始聊天'"
         :isBuiltin="agent.is_builtin"
         @action="handleAgentAction(agent)"
       />

@@ -38,7 +38,7 @@ onMounted(() => {
         :avatar="agent.avatar"
         :description="agent.description"
         :showAction="true"
-        actionText="进入智能体"
+        actionText="开始聊天"
         @action="$router.push({ name: 'Chat', query: { agent: agent.id } })"
       />
       <AgentCard add addText="创建智能体" @add="goCreate" />
