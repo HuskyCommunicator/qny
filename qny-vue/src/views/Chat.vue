@@ -3,7 +3,11 @@ import { ElIcon, ElLoading, ElMessage } from "element-plus";
 import { Microphone, VideoPlay, VideoPause } from "@element-plus/icons-vue";
 import { ref, onMounted, nextTick, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
-import { sendChatTextAPI, speechToTextAPI, textToSpeechAPI } from "../api/agent";
+import {
+  sendChatTextAPI,
+  speechToTextAPI,
+  textToSpeechAPI,
+} from "../api/agent";
 const recognizing = ref(false);
 const showVoiceModal = ref(false);
 const isPlaying = ref(false);
@@ -50,19 +54,22 @@ async function playTextToSpeech(text, voice = "longxiaochun") {
     const response = await textToSpeechAPI({
       content: text,
       voice: voice,
-      format: "mp3"
+      format: "mp3",
     });
-    
+
     if (response.audio_base64) {
-      // 将base64转换为音频
-      const audioData = atob(response.audio_base64);
-      const audioBlob = new Blob([new Uint8Array(audioData)], { type: 'audio/mp3' });
+      // 修正 base64 转 blob
+      const binaryString = atob(response.audio_base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const audioBlob = new Blob([bytes], { type: "audio/mp3" });
       const audioUrl = URL.createObjectURL(audioBlob);
-      
       // 创建音频对象
       const audio = new Audio(audioUrl);
       audioQueue.value.push(audio);
-      
       // 如果当前没有播放音频，开始播放
       if (!isPlaying.value) {
         playNextAudio();
@@ -79,23 +86,23 @@ function playNextAudio() {
     isPlaying.value = false;
     return;
   }
-  
+
   const audio = audioQueue.value.shift();
   currentAudio.value = audio;
   isPlaying.value = true;
-  
+
   audio.onended = () => {
     URL.revokeObjectURL(audio.src);
     playNextAudio();
   };
-  
+
   audio.onerror = () => {
     console.error("音频播放错误");
     isPlaying.value = false;
     playNextAudio();
   };
-  
-  audio.play().catch(error => {
+
+  audio.play().catch((error) => {
     console.error("音频播放失败:", error);
     isPlaying.value = false;
     playNextAudio();
@@ -134,9 +141,9 @@ const input = ref("");
 
 // 会话ID处理 - 优先使用URL参数，其次使用localStorage
 const sessionId = ref(
-  route.query.session_id || 
-  localStorage.getItem(`chat-session-${agent.id}`) || 
-  ""
+  route.query.session_id ||
+    localStorage.getItem(`chat-session-${agent.id}`) ||
+    ""
 );
 
 async function send() {
@@ -150,12 +157,12 @@ async function send() {
   const payload = {
     content: userMsg,
   };
-  
+
   // 如果有role_id，添加到请求中
   if (agent.id) {
     payload.role_id = agent.id;
   }
-  
+
   if (sessionId.value) {
     payload.session_id = sessionId.value;
   }
@@ -175,7 +182,7 @@ async function send() {
     setTimeout(() => {
       const replyText = res.content || "(无回复)";
       messages.value.push({ from: "agent", text: replyText });
-      
+
       // 自动播放AI回复的语音
       if (replyText !== "(无回复)") {
         playTextToSpeech(replyText);
@@ -227,7 +234,7 @@ onUnmounted(() => {
           <span>{{ msg.text }}</span>
           <!-- AI消息添加语音播放按钮 -->
           <div v-if="msg.from === 'agent'" class="msg-actions">
-            <button 
+            <button
               @click="playTextToSpeech(msg.text)"
               class="play-btn"
               :disabled="isPlaying"
@@ -340,7 +347,9 @@ onUnmounted(() => {
   margin-left: 8px;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.08);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
   border: 2px solid #fecaca;
 }
 

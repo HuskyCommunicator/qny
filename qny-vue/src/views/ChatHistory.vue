@@ -6,14 +6,21 @@
           v-for="session in sessions"
           :key="session.session_id"
           class="agent-item"
-          :class="{ active: selectedSession?.session_id === session.session_id }"
+          :class="{
+            active: selectedSession?.session_id === session.session_id,
+          }"
           @click="selectSession(session)"
         >
-          <img :src="session.role?.avatar_url || '/default-avatar.png'" class="agent-avatar" />
+          <img
+            :src="session.role?.avatar_url || '/default-avatar.png'"
+            class="agent-avatar"
+          />
           <div class="agent-info">
-            <div class="agent-name">{{ session.title || '新对话' }}</div>
+            <div class="agent-name">{{ session.title || "新对话" }}</div>
             <div class="last-msg">{{ getLastMessage(session) }}</div>
-            <div class="msg-time">{{ formatTime(session.last_message_at || session.created_at) }}</div>
+            <div class="msg-time">
+              {{ formatTime(session.last_message_at || session.created_at) }}
+            </div>
           </div>
           <div class="session-actions">
             <el-button
@@ -40,7 +47,7 @@
 
       <div v-else class="chat-messages">
         <div class="messages-header">
-          <h3>{{ selectedSession.title || '对话记录' }}</h3>
+          <h3>{{ selectedSession.title || "对话记录" }}</h3>
           <div class="session-info">
             <span>{{ selectedSession.message_count }} 条消息</span>
             <span>{{ formatTime(selectedSession.created_at) }}</span>
@@ -52,14 +59,25 @@
             v-for="message in messages"
             :key="message.id"
             class="message-item"
-            :class="{ 'user-message': message.is_user_message, 'assistant-message': !message.is_user_message }"
+            :class="{
+              'user-message': message.is_user_message,
+              'assistant-message': !message.is_user_message,
+            }"
           >
             <div class="message-avatar">
-              <img :src="message.is_user_message ? '/user-avatar.png' : (selectedSession.role?.avatar_url || '/default-avatar.png')" />
+              <img
+                :src="
+                  message.is_user_message
+                    ? '/user-avatar.png'
+                    : selectedSession.role?.avatar_url || '/default-avatar.png'
+                "
+              />
             </div>
             <div class="message-content">
               <div class="message-text">{{ message.content }}</div>
-              <div class="message-time">{{ formatTime(message.created_at) }}</div>
+              <div class="message-time">
+                {{ formatTime(message.created_at) }}
+              </div>
             </div>
           </div>
         </div>
@@ -73,103 +91,112 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Loading } from '@element-plus/icons-vue'
-import { getMyAgents, getChatHistory, getMySessions, deleteSession as deleteSessionApi } from '@/api/user'
-import { getChatMessages } from '@/api/chat'
+import { ref, onMounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Delete, Loading } from "@element-plus/icons-vue";
+import {
+  getMyAgents,
+  getChatHistory,
+  getMySessions,
+  deleteSession as deleteSessionApi,
+} from "@/api/user";
+import { getChatMessagesAPI } from "@/api/chat";
 
-const sessions = ref([])
-const selectedSession = ref(null)
-const messages = ref([])
-const loading = ref(false)
+const sessions = ref([]);
+const selectedSession = ref(null);
+const messages = ref([]);
+const loading = ref(false);
 
 // 获取会话列表
 const fetchSessions = async () => {
   try {
-    loading.value = true
-    const response = await getMySessions()
-    sessions.value = response.data || []
+    loading.value = true;
+    const response = await getMySessions();
+    sessions.value = response.data || [];
   } catch (error) {
-    console.error('获取会话列表失败:', error)
-    ElMessage.error('获取会话列表失败')
+    console.error("获取会话列表失败:", error);
+    ElMessage.error("获取会话列表失败");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // 选择会话
 const selectSession = async (session) => {
-  selectedSession.value = session
-  await fetchMessages(session.session_id)
-}
+  selectedSession.value = session;
+  await fetchMessages(session.session_id);
+};
 
 // 获取会话消息
 const fetchMessages = async (sessionId) => {
   try {
-    loading.value = true
-    const response = await getChatMessages(sessionId)
-    messages.value = response.data || []
+    loading.value = true;
+    const response = await getChatMessagesAPI(sessionId);
+    messages.value = response.data || [];
   } catch (error) {
-    console.error('获取消息失败:', error)
-    ElMessage.error('获取消息失败')
+    console.error("获取消息失败:", error);
+    ElMessage.error("获取消息失败");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // 删除会话
 const deleteSession = async (sessionId) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个对话吗？删除后无法恢复。', '确认删除', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      "确定要删除这个对话吗？删除后无法恢复。",
+      "确认删除",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    );
 
-    await deleteSessionApi(sessionId)
-    ElMessage.success('删除成功')
+    await deleteSessionApi(sessionId);
+    ElMessage.success("删除成功");
 
     // 如果删除的是当前选中的会话，清空选择
     if (selectedSession.value?.session_id === sessionId) {
-      selectedSession.value = null
-      messages.value = []
+      selectedSession.value = null;
+      messages.value = [];
     }
 
     // 重新获取会话列表
-    await fetchSessions()
+    await fetchSessions();
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除会话失败:', error)
-      ElMessage.error('删除会话失败')
+    if (error !== "cancel") {
+      console.error("删除会话失败:", error);
+      ElMessage.error("删除会话失败");
     }
   }
-}
+};
 
 // 获取最后一条消息
 const getLastMessage = (session) => {
-  if (!session.last_message_at) return '开始对话'
-  return '继续对话...'
-}
+  if (!session.last_message_at) return "开始对话";
+  return "继续对话...";
+};
 
 // 格式化时间
 const formatTime = (timeString) => {
-  if (!timeString) return ''
-  const date = new Date(timeString)
-  const now = new Date()
-  const diff = now - date
+  if (!timeString) return "";
+  const date = new Date(timeString);
+  const now = new Date();
+  const diff = now - date;
 
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
 
-  return date.toLocaleDateString()
-}
+  return date.toLocaleDateString();
+};
 
 onMounted(() => {
-  fetchSessions()
-})
+  fetchSessions();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -278,8 +305,12 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .empty-tip {
   color: #a1a1aa;

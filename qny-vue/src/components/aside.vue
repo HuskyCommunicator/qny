@@ -38,22 +38,22 @@ const handleClose = (key, keyPath) => {
       <el-icon><icon-menu /></el-icon>
       <span>智能体大厅</span>
     </el-menu-item>
-    <el-menu-item index="/my-agent">
+    <!-- <el-menu-item index="/my-agent">
       <el-icon><icon-menu /></el-icon>
       <span>我的智能体</span>
-    </el-menu-item>
+    </el-menu-item> -->
     <el-menu-item index="/user-center">
       <el-icon><User /></el-icon>
       <span>个人中心</span>
     </el-menu-item>
-    <el-menu-item index="/chat">
+    <!-- <el-menu-item index="/chat">
       <el-icon><ChatSquare /></el-icon>
       <span>聊天</span>
     </el-menu-item>
     <el-menu-item index="/chat-history">
       <el-icon><Document /></el-icon>
       <span>聊天历史</span>
-    </el-menu-item>
+    </el-menu-item> -->
   </el-menu>
 </template>
 
