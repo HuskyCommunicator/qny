@@ -1,7 +1,19 @@
-const baseURL = "http://116.62.231.58:8000";
-// const baseURL = "http://localhost:8000";
+// 生产环境 API 配置示例
+// 请根据你的实际部署情况修改以下地址
+
+// 方案1：如果你的后端部署在同一台服务器的不同端口
+// const baseURL = "http://你的服务器IP:8000";
+
+// 方案2：如果你的后端部署在不同服务器
+// const baseURL = "http://后端服务器IP:8000";
+
+// 方案3：如果使用域名和HTTPS
+// const baseURL = "https://api.你的域名.com";
+
+// 方案4：如果使用Nginx代理（推荐）
+const baseURL = "/api"; // 这样会通过Nginx代理到后端
+
 const API = {
-  baseURL: baseURL,
   // 用户相关接口
   USER: {
     INFO: baseURL + "/user/info", // 获取用户信息
@@ -19,3 +31,5 @@ const API = {
 };
 
 export default API;
+
+

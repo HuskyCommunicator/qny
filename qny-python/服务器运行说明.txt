@@ -1,0 +1,8 @@
+source /www/server/pyporject_evn/ai_backend_env_venv/bin/activate
+cd /www/wwwroot/ai-roleplay-backend
+pip install --no-cache-dir -r requirements.txt
+cd /www/wwwroot/ai-roleplay-backend
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 > ai_backend.log 2>&1 &
+
+http://116.62.231.58:8000/docs
+tail -f ai_backend.log     //显示日志

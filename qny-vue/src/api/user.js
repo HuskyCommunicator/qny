@@ -5,12 +5,12 @@ export const loginAPI = (data) => {
   return request({
     url: API.USER.LOGIN,
     method: "post",
-    data: {
+    data: new URLSearchParams({
       username: data.username,
       password: data.password
-    },
+    }),
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
   });
 };
