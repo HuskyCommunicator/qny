@@ -2,16 +2,15 @@ import request from "./axios";
 import API from "./api";
 
 export const loginAPI = (data) => {
-  const formData = new FormData();
-  for (const key in data) {
-    formData.append(key, data[key]);
-  }
   return request({
     url: API.USER.LOGIN,
     method: "post",
-    data: formData,
+    data: {
+      username: data.username,
+      password: data.password
+    },
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": "application/json",
     },
   });
 };

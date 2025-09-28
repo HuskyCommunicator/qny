@@ -14,6 +14,7 @@ PyPDF2
 openai
 oss2
 pydantic[email]
+psutil              # 系统性能监控（可选）
 
 # 语音功能依赖
 requests          # HTTP请求

@@ -13,6 +13,7 @@ const API = {
     MY_AGENTS: baseURL + "/me/agents", // 获取我的智能体列表
     AGENT_LIST: baseURL + "/role/list", // 获取智能体列表
     AGENT_ADD: baseURL + "/role/my/add", // 创建智能体
+    CREATE_FROM_TEMPLATE: baseURL + "/role/create-from-template", // 从模板创建角色实例
   },
 };
 

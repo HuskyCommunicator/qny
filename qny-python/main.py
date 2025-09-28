@@ -22,6 +22,7 @@ from app.routers import me as me_router
 from app.routers import recommendation as recommendation_router
 from app.routers import growth as growth_router
 from app.routers import scene as scene_router
+from app.routers import rag as rag_router
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -178,7 +179,6 @@ def get_metrics():
     """获取系统性能指标"""
     # 获取基本系统指标
     import time
-    import psutil
 
     metrics = {
         "timestamp": time.time(),
@@ -188,6 +188,9 @@ def get_metrics():
     }
 
     try:
+        # 尝试导入psutil
+        import psutil
+        
         # 添加系统性能指标
         system_metrics = {
             "cpu_percent": psutil.cpu_percent(),
@@ -198,6 +201,12 @@ def get_metrics():
         }
         metrics.update(system_metrics)
         metrics["status"] = "full_metrics"
+    except ImportError:
+        # psutil未安装，只返回基本指标
+        metrics.update({
+            "status": "basic_metrics_only",
+            "message": "psutil未安装，无法获取系统性能指标"
+        })
     except Exception as e:
         metrics.update({
             "status": "basic_metrics_only",
@@ -217,3 +226,4 @@ app.include_router(me_router.router)
 app.include_router(recommendation_router.router)
 app.include_router(growth_router.router)
 app.include_router(scene_router.router)
+app.include_router(rag_router.router)

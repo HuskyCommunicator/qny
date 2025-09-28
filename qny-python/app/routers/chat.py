@@ -11,7 +11,7 @@ from ..models.user import User
 from ..schemas.chat import (
     ChatRequest, ChatResponse, ChatSessionCreate,
     ChatMessageCreate, ChatHistoryRequest, ChatHistoryResponse,
-    ChatSessionResponse, ChatMessageResponse
+    ChatSessionResponse, ChatMessageResponse, TTSRequest
 )
 from ..services.llm_service import generate_reply
 from ..services.stt_service import transcribe_audio
@@ -137,9 +137,13 @@ def get_session_messages(
     chat_service: ChatService = Depends(get_chat_service)
 ):
     """获取会话的消息列表"""
-    user_id = current_user.id
-    messages = chat_service.get_session_messages(session_id, user_id, limit, offset)
-    return messages
+    try:
+        user_id = current_user.id
+        messages = chat_service.get_session_messages(session_id, user_id, limit, offset)
+        return messages
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/history", response_model=ChatHistoryResponse)
@@ -203,9 +207,17 @@ async def speech_to_text(file: UploadFile = File(...)):
 
 
 @router.post("/tts")
-def text_to_speech(payload: ChatRequest):
+def text_to_speech(payload: TTSRequest):
     """文字转语音"""
-    audio_bytes = synthesize_speech(payload.content)
-    return {"audio_base64": audio_bytes.decode("utf-8")}
+    try:
+        audio_bytes = synthesize_speech(payload.content, payload.voice, payload.format)
+        if audio_bytes:
+            import base64
+            audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+            return {"audio_base64": audio_base64, "format": payload.format}
+        else:
+            raise HTTPException(status_code=500, detail="语音合成失败")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"语音合成错误: {str(e)}")
 
 

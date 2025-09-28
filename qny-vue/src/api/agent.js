@@ -6,6 +6,31 @@ export const sendChatTextAPI = (data) => {
     data,
   });
 };
+
+// 语音转文字 (STT)
+export const speechToTextAPI = (audioFile) => {
+  const formData = new FormData();
+  formData.append('file', audioFile);
+  
+  return request({
+    url: "http://116.62.231.58:8000/chat/stt",
+    method: "post",
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+// 文字转语音 (TTS)
+export const textToSpeechAPI = (data) => {
+  return request({
+    url: "http://116.62.231.58:8000/chat/tts",
+    method: "post",
+    data,
+    responseType: 'json'
+  });
+};
 import request from "./axios";
 import API from "./api";
 
@@ -29,4 +54,14 @@ export const addAgentAPI = (data) => {
     data,
   });
 };
+
+// 从模板创建角色实例
+export const createRoleFromTemplateAPI = (templateName) => {
+  return request({
+    url: API.AGENT.CREATE_FROM_TEMPLATE,
+    method: "post",
+    params: { template_name: templateName },
+  });
+};
+
 // 可在此文件继续扩展其他智能体相关接口

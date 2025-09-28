@@ -4,6 +4,21 @@ from sqlalchemy.orm import relationship
 from ..core.db import Base
 
 
+class Document(Base):
+    """RAG文档存储模型"""
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    doc_id = Column(String(128), unique=True, nullable=False, index=True)  # 文档唯一ID
+    text = Column(Text, nullable=False)  # 文档内容
+    doc_metadata = Column(JSON, nullable=True)  # 文档元数据
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Document(doc_id='{self.doc_id}')>"
+
+
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
 

@@ -1,31 +1,14 @@
-from fastapi import APIRouter, Query, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Query, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
-from typing import List
 import json
 
+from prompt_templates import ROLE_PROMPTS, BUILTIN_ROLES
 from ..core.db import get_db
-from ..core.security import get_current_user
-from ..models.role import Role, UserRole
+from ..models.role import Role
 from ..models.user import User
-from ..schemas.role import RoleInfo, RoleCreate, RoleUpdate, RoleOut, RoleTemplateOut, RoleTemplate, UserRoleCreate, UserRoleUpdate, UserRoleOut
+from ..core.security import get_current_user
+from ..schemas.role import RoleInfo, RoleTemplateCreate, RoleTemplateUpdate, RoleTemplateOut, RoleTemplate
 from ..services.oss_service import get_oss_service
-
-# 导入 prompt_templates
-try:
-    import sys
-    import os
-    # 添加 backend 目录到 Python 路径
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    if backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
-    
-    from prompt_templates import ROLE_PROMPTS, BUILTIN_ROLES
-except ImportError as e:
-    print(f"[WARNING] Failed to import prompt_templates: {e}")
-    # 如果导入失败，提供默认值
-    ROLE_PROMPTS = {}
-    BUILTIN_ROLES = {}
 
 
 router = APIRouter(prefix="/role", tags=["role"])
@@ -47,63 +30,201 @@ async def upload_avatar(file: UploadFile = File(...)):
         avatar_url = await oss_service.upload_file(file, folder="avatars")
         return {"avatar_url": avatar_url}
     except Exception as e:
-        # 如果 OSS 不可用，返回错误信息
-        raise HTTPException(status_code=503, detail=f"文件上传服务不可用: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+
+
+@router.get("/list", response_model=list[RoleInfo])
+def list_roles(db: Session = Depends(get_db)):
+    """获取所有角色列表（包含数据库中的实际角色）"""
+    results = []
+    
+    # 获取数据库中的所有公开角色
+    db_roles = db.query(Role).filter(
+        Role.is_public == True,
+        Role.is_active == True
+    ).all()
+    
+    for role in db_roles:
+        # 解析技能和标签
+        skills = []
+        tags = []
+        
+        if role.skills:
+            try:
+                skills = json.loads(role.skills) if isinstance(role.skills, str) else role.skills
+            except:
+                skills = []
+        
+        if role.tags:
+            try:
+                tags = json.loads(role.tags) if isinstance(role.tags, str) else role.tags
+            except:
+                tags = []
+        
+        results.append(RoleInfo(
+            id=role.id,
+            name=role.name,
+            display_name=role.display_name,
+            description=role.description,
+            avatar_url=role.avatar_url,
+            skills=skills,
+            background=role.background,
+            personality=role.personality,
+            category=role.category,
+            tags=tags,
+            is_builtin=False,
+            is_public=role.is_public,
+            created_at=role.created_at
+        ))
+    
+    # 如果没有数据库角色，返回内置角色模板
+    if not results:
+        for name, info in BUILTIN_ROLES.items():
+            results.append(RoleInfo(
+                id=None,  # 内置角色没有ID
+                name=name,
+                display_name=info["display_name"],
+                description=info["description"],
+                avatar_url=info["avatar_url"],
+                skills=info["skills"],
+                background=info["background"],
+                personality=info["personality"],
+                category=info["category"],
+                tags=info["tags"],
+                is_builtin=True,
+                is_public=True,
+                created_at=None
+            ))
+    
+    return results
+
+
+@router.post("/create-from-template", response_model=RoleInfo)
+def create_role_from_template(
+    template_name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """从模板创建角色实例"""
+    # 检查模板是否存在
+    if template_name not in BUILTIN_ROLES:
+        raise HTTPException(status_code=404, detail="角色模板不存在")
+    
+    template_info = BUILTIN_ROLES[template_name]
+    
+    # 检查是否已经创建过这个角色
+    existing_role = db.query(Role).filter(
+        Role.name == template_name,
+        Role.created_by == current_user.id
+    ).first()
+    
+    if existing_role:
+        # 返回已存在的角色
+        skills = []
+        tags = []
+        
+        if existing_role.skills:
+            try:
+                skills = json.loads(existing_role.skills) if isinstance(existing_role.skills, str) else existing_role.skills
+            except:
+                skills = []
+        
+        if existing_role.tags:
+            try:
+                tags = json.loads(existing_role.tags) if isinstance(existing_role.tags, str) else existing_role.tags
+            except:
+                tags = []
+        
+        return RoleInfo(
+            id=existing_role.id,
+            name=existing_role.name,
+            display_name=existing_role.display_name,
+            description=existing_role.description,
+            avatar_url=existing_role.avatar_url,
+            skills=skills,
+            background=existing_role.background,
+            personality=existing_role.personality,
+            category=existing_role.category,
+            tags=tags,
+            is_builtin=False,
+            is_public=existing_role.is_public,
+            created_at=existing_role.created_at
+        )
+    
+    # 创建新角色
+    new_role = Role(
+        name=template_name,
+        display_name=template_info["display_name"],
+        description=template_info["description"],
+        system_prompt=template_info.get("system_prompt", ""),
+        avatar_url=template_info["avatar_url"],
+        skills=json.dumps(template_info["skills"]) if template_info["skills"] else None,
+        background=template_info["background"],
+        personality=template_info["personality"],
+        category=template_info["category"],
+        tags=json.dumps(template_info["tags"]) if template_info["tags"] else None,
+        is_public=True,
+        is_active=True,
+        created_by=current_user.id
+    )
+    
+    db.add(new_role)
+    db.commit()
+    db.refresh(new_role)
+    
+    return RoleInfo(
+        id=new_role.id,
+        name=new_role.name,
+        display_name=new_role.display_name,
+        description=new_role.description,
+        avatar_url=new_role.avatar_url,
+        skills=template_info["skills"],
+        background=new_role.background,
+        personality=new_role.personality,
+        category=new_role.category,
+        tags=template_info["tags"],
+        is_builtin=False,
+        is_public=new_role.is_public,
+        created_at=new_role.created_at
+    )
 
 
 @router.get("/search", response_model=list[RoleInfo])
 def search_roles(q: str = Query(""), db: Session = Depends(get_db)):
     """搜索角色，返回丰富的角色信息"""
-    try:
-        print(f"[DEBUG] Searching roles with query: '{q}'")
-        print(f"[DEBUG] BUILTIN_ROLES keys: {list(BUILTIN_ROLES.keys())}")
-        
-        q_lower = q.lower()
-        results = []
-        
-        # 搜索内置角色
-        for name, info in BUILTIN_ROLES.items():
-            if q_lower in name.lower() or q_lower in info["display_name"].lower():
-                print(f"[DEBUG] Found builtin role: {name}")
-                results.append(RoleInfo(
-                    name=name,
-                    display_name=info["display_name"],
-                    description=info["description"],
-                    avatar_url=info["avatar_url"],
-                    skills=info["skills"],
-                    background=info["background"],
-                    personality=info["personality"],
-                    is_builtin=True
-                ))
-        
-        # 搜索自定义角色（暂时跳过，因为数据库表结构可能未更新）
-        try:
-            customs = db.query(Role).filter(Role.name.like(f"%{q}%")).all()
-            print(f"[DEBUG] Found {len(customs)} custom roles")
-            for custom in customs:
-                skills = json.loads(custom.skills) if custom.skills else None
-                results.append(RoleInfo(
-                    name=custom.name,
-                    display_name=getattr(custom, 'display_name', None),
-                    description=getattr(custom, 'description', None),
-                    avatar_url=getattr(custom, 'avatar_url', None),
-                    skills=skills,
-                    background=getattr(custom, 'background', None),
-                    personality=getattr(custom, 'personality', None),
-                    is_builtin=False
-                ))
-        except Exception as db_error:
-            print(f"[WARNING] Custom roles query failed (table structure may need update): {db_error}")
-            # 继续执行，只返回内置角色
-        
-        print(f"[DEBUG] Returning {len(results)} results")
-        return results
-        
-    except Exception as e:
-        print(f"[ERROR] Role search failed: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"角色搜索失败: {str(e)}")
+    q_lower = q.lower()
+    results = []
+    
+    # 搜索内置角色
+    for name, info in BUILTIN_ROLES.items():
+        if q_lower in name.lower() or q_lower in info["display_name"].lower():
+            results.append(RoleInfo(
+                name=name,
+                display_name=info["display_name"],
+                description=info["description"],
+                avatar_url=info["avatar_url"],
+                skills=info["skills"],
+                background=info["background"],
+                personality=info["personality"],
+                is_builtin=True
+            ))
+    
+    # 搜索自定义角色
+    customs = db.query(RoleTemplate).filter(RoleTemplate.name.like(f"%{q}%")).all()
+    for custom in customs:
+        skills = json.loads(custom.skills) if custom.skills else None
+        results.append(RoleInfo(
+            name=custom.name,
+            display_name=custom.display_name,
+            description=custom.description,
+            avatar_url=custom.avatar_url,
+            skills=skills,
+            background=custom.background,
+            personality=custom.personality,
+            is_builtin=False
+        ))
+    
+    return results
 
 
 @router.get("/template/{name}", response_model=RoleInfo)
@@ -124,7 +245,7 @@ def get_role_template(name: str, db: Session = Depends(get_db)):
         )
     
     # 检查自定义角色
-    row = db.query(Role).filter(Role.name == name).first()
+    row = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
     if row:
         skills = json.loads(row.skills) if row.skills else None
         return RoleInfo(
@@ -146,7 +267,7 @@ def get_role_prompt(name: str, db: Session = Depends(get_db)):
     """获取角色 Prompt 模板（仅返回 prompt 文本）"""
     template = ROLE_PROMPTS.get(name)
     if template is None:
-        row = db.query(Role).filter(Role.name == name).first()
+        row = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
         if row:
             template = row.prompt
         else:
@@ -154,15 +275,15 @@ def get_role_prompt(name: str, db: Session = Depends(get_db)):
     return {"name": name, "prompt": template}
 
 
-@router.post("/template", response_model=RoleOut)
-def create_role_template(payload: RoleCreate, db: Session = Depends(get_db)):
+@router.post("/template", response_model=RoleTemplateOut)
+def create_role_template(payload: RoleTemplateCreate, db: Session = Depends(get_db)):
     """创建角色模板"""
-    existed = db.query(Role).filter(Role.name == payload.name).first()
+    existed = db.query(RoleTemplate).filter(RoleTemplate.name == payload.name).first()
     if existed:
         raise HTTPException(status_code=400, detail="角色名称已存在")
     
     skills_json = json.dumps(payload.skills) if payload.skills else None
-    role = Role(
+    role = RoleTemplate(
         name=payload.name,
         prompt=payload.prompt,
         display_name=payload.display_name,
@@ -178,10 +299,10 @@ def create_role_template(payload: RoleCreate, db: Session = Depends(get_db)):
     return role
 
 
-@router.put("/template/{name}", response_model=RoleOut)
-def update_role_template(name: str, payload: RoleUpdate, db: Session = Depends(get_db)):
+@router.put("/template/{name}", response_model=RoleTemplateOut)
+def update_role_template(name: str, payload: RoleTemplateUpdate, db: Session = Depends(get_db)):
     """更新角色模板"""
-    role = db.query(Role).filter(Role.name == name).first()
+    role = db.query(RoleTemplate).filter(RoleTemplate.name == name).first()
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
     
@@ -205,411 +326,3 @@ def update_role_template(name: str, payload: RoleUpdate, db: Session = Depends(g
     return role
 
 
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.core.db import get_db
-from app.core.security import get_current_user
-from app.models import User, Role, UserRole
-from app.schemas import (
-    RoleCreate, RoleUpdate, RoleOut, RoleList, RoleSearchParams,
-    UserRoleCreate, UserRoleUpdate, UserRoleOut
-)
-from app.utils.logger import get_logger
-
-router = APIRouter(prefix="/role", tags=["role"])
-logger = get_logger(__name__)
-
-
-@router.post("/create", response_model=RoleOut, status_code=status.HTTP_201_CREATED)
-async def create_role(
-    role_data: RoleCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """创建新角色"""
-    # 检查角色名称是否已存在
-    existing_role = db.query(Role).filter(Role.name == role_data.name).first()
-    if existing_role:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="角色名称已存在"
-        )
-
-    # 创建角色
-    role = Role(
-        name=role_data.name,
-        description=role_data.description,
-        system_prompt=role_data.system_prompt,
-        avatar_url=role_data.avatar_url,
-        is_public=role_data.is_public,
-        config=role_data.config,
-        tags=role_data.tags,
-        category=role_data.category,
-        created_by=current_user.id
-    )
-
-    db.add(role)
-    db.commit()
-    db.refresh(role)
-
-    logger.info(f"用户 {current_user.username} 创建了角色: {role.name}")
-    return role
-
-
-@router.put("/{role_id}", response_model=RoleOut)
-async def update_role(
-    role_id: int,
-    role_data: RoleUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """更新角色信息"""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-
-    # 检查权限：只有创建者或管理员可以更新
-    if role.created_by != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="无权限更新此角色"
-        )
-
-    # 更新字段
-    update_data = role_data.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(role, field, value)
-
-    db.commit()
-    db.refresh(role)
-
-    logger.info(f"用户 {current_user.username} 更新了角色: {role.name}")
-    return role
-
-
-@router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_role(
-    role_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """删除角色"""
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-
-    # 检查权限：只有创建者或管理员可以删除
-    if role.created_by != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="无权限删除此角色"
-        )
-
-    # 软删除：设置为不活跃
-    role.is_active = False
-    db.commit()
-
-    logger.info(f"用户 {current_user.username} 删除了角色: {role.name}")
-
-
-@router.get("/detail/{role_id}", response_model=RoleOut)
-async def get_role(role_id: int, db: Session = Depends(get_db)):
-    """获取角色详情"""
-    role = db.query(Role).filter(
-        and_(Role.id == role_id, Role.is_active == True)
-    ).first()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-    return role
-
-
-@router.get("/list", response_model=RoleList)
-async def get_role_list(
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
-    category: Optional[str] = Query(None),
-    is_public: Optional[bool] = Query(True),
-    db: Session = Depends(get_db)
-):
-    """获取角色列表"""
-    # 构建查询条件
-    query = db.query(Role).filter(Role.is_active == True)
-
-    if is_public is not None:
-        query = query.filter(Role.is_public == is_public)
-
-    if category:
-        query = query.filter(Role.category == category)
-
-    # 获取总数
-    total = query.count()
-
-    # 分页查询
-    roles = query.offset((page - 1) * size).limit(size).all()
-
-    return RoleList(
-        roles=roles,
-        total=total,
-        page=page,
-        size=size
-    )
-
-
-@router.get("/search-roles", response_model=List[RoleOut])
-async def search_roles(
-    q: str = Query(..., min_length=1),
-    category: Optional[str] = Query(None),
-    tags: Optional[str] = Query(None),
-    is_public: bool = Query(True),
-    limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db)
-):
-    """搜索角色"""
-    query = db.query(Role).filter(Role.is_active == True)
-
-    if is_public:
-        query = query.filter(Role.is_public == True)
-
-    # 关键词搜索
-    if q:
-        search_condition = or_(
-            Role.name.contains(q),
-            Role.description.contains(q),
-            Role.system_prompt.contains(q)
-        )
-        query = query.filter(search_condition)
-
-    # 分类筛选
-    if category:
-        query = query.filter(Role.category == category)
-
-    # 标签筛选
-    if tags:
-        # 将逗号分隔的标签字符串转换为列表
-        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
-        for tag in tag_list:
-            query = query.filter(Role.tags.contains([tag]))
-
-    roles = query.limit(limit).all()
-    return roles
-
-
-# 用户智能体管理接口
-@router.post("/my/add", response_model=UserRoleOut, status_code=status.HTTP_201_CREATED)
-async def add_user_role(
-    user_role_data: UserRoleCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """添加角色到用户的智能体列表"""
-    # 检查角色是否存在
-    role = db.query(Role).filter(
-        and_(Role.id == user_role_data.role_id, Role.is_active == True)
-    ).first()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-
-    # 检查是否已添加
-    existing = db.query(UserRole).filter(
-        and_(UserRole.user_id == current_user.id, UserRole.role_id == role.id)
-    ).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="已添加该角色"
-        )
-
-    # 创建用户角色关系
-    user_role = UserRole(
-        user_id=current_user.id,
-        role_id=role.id,
-        custom_name=user_role_data.custom_name,
-        custom_config=user_role_data.custom_config
-    )
-
-    db.add(user_role)
-    db.commit()
-    db.refresh(user_role)
-
-    logger.info(f"用户 {current_user.username} 添加了角色: {role.name}")
-    return user_role
-
-
-@router.get("/my/list", response_model=List[UserRoleOut])
-async def get_my_roles(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """获取我的智能体列表"""
-    user_roles = db.query(UserRole).filter(
-        UserRole.user_id == current_user.id
-    ).all()
-
-    return user_roles
-
-
-@router.put("/my/{user_role_id}", response_model=UserRoleOut)
-async def update_user_role(
-    user_role_id: int,
-    update_data: UserRoleUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """更新用户智能体配置"""
-    user_role = db.query(UserRole).filter(
-        and_(UserRole.id == user_role_id, UserRole.user_id == current_user.id)
-    ).first()
-    if not user_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="智能体不存在"
-        )
-
-    # 更新字段
-    update_dict = update_data.dict(exclude_unset=True)
-    for field, value in update_dict.items():
-        setattr(user_role, field, value)
-
-    db.commit()
-    db.refresh(user_role)
-
-    logger.info(f"用户 {current_user.username} 更新了智能体配置")
-    return user_role
-
-
-@router.delete("/my/{user_role_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user_role(
-    user_role_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """删除用户智能体"""
-    user_role = db.query(UserRole).filter(
-        and_(UserRole.id == user_role_id, UserRole.user_id == current_user.id)
-    ).first()
-    if not user_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="智能体不存在"
-        )
-
-    db.delete(user_role)
-    db.commit()
-
-    logger.info(f"用户 {current_user.username} 删除了智能体")
-
-
-# 角色模板管理接口
-@router.get("/templates", response_model=List[RoleTemplateOut])
-async def get_all_templates():
-    """获取所有角色模板"""
-    from prompt_templates import get_all_templates
-
-    templates = get_all_templates()
-    return list(templates.values())
-
-
-@router.get("/templates/{template_name}", response_model=RoleTemplate)
-async def get_template(template_name: str):
-    """获取指定角色模板"""
-    from prompt_templates import get_template
-
-    template = get_template(template_name)
-    if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="模板不存在"
-        )
-    return template
-
-
-@router.get("/templates/by-category/{category}", response_model=List[RoleTemplateOut])
-async def get_templates_by_category(category: str):
-    """按分类获取角色模板"""
-    from prompt_templates import get_templates_by_category
-
-    templates = get_templates_by_category(category)
-    return templates
-
-
-@router.get("/templates/search", response_model=List[RoleTemplateOut])
-async def search_templates(q: str = Query(..., min_length=1)):
-    """搜索角色模板"""
-    from prompt_templates import search_templates
-
-    templates = search_templates(q)
-    return templates
-
-
-@router.post("/create-from-template/{template_name}", response_model=RoleOut, status_code=status.HTTP_201_CREATED)
-async def create_role_from_template(
-    template_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """从模板创建角色"""
-    from prompt_templates import get_template
-
-    template = get_template(template_name)
-    if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="模板不存在"
-        )
-
-    # 检查角色名称是否已存在
-    existing_role = db.query(Role).filter(Role.name == template.name).first()
-    if existing_role:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="角色名称已存在"
-        )
-
-    # 从模板创建角色
-    role = Role(
-        name=template.name,
-        description=template.description,
-        system_prompt=template.system_prompt,
-        avatar_url=template.avatar_url,
-        is_public=True,  # 从模板创建的角色默认为公开
-        config=template.config,
-        tags=template.tags,
-        category=template.category,
-        created_by=current_user.id
-    )
-
-    db.add(role)
-    db.commit()
-    db.refresh(role)
-
-    logger.info(f"用户 {current_user.username} 从模板创建了角色: {role.name}")
-    return role
-
-
-# 保留原有的模板接口（向后兼容）
-@router.get("/template/{name}")
-async def get_role_template_legacy(name: str):
-    """获取角色模板（向后兼容）"""
-    from prompt_templates import TEMPLATES
-
-    template = TEMPLATES.get(name)
-    if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="模板不存在"
-        )
-    return {"name": name, "template": template}

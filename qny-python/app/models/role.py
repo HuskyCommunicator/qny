@@ -39,7 +39,7 @@ class Role(Base):
     negative_feedback = Column(Integer, default=0, comment="差评数量")
     growth_stats = Column(JSON, nullable=True, comment="成长统计数据")
 
-    # 关联关系
+    # 关联关系 - 使用字符串引用避免循环导入
     creator = relationship("User", back_populates="created_roles")
     user_roles = relationship("UserRole", back_populates="role")
     chat_messages = relationship("ChatMessage", back_populates="role")

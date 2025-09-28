@@ -18,7 +18,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # 关联关系
+    # 关联关系 - 使用字符串引用避免循环导入
     created_roles = relationship("Role", back_populates="creator")
     user_roles = relationship("UserRole", back_populates="user")
     chat_messages = relationship("ChatMessage", back_populates="user")

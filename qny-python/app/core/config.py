@@ -50,15 +50,15 @@ class Settings:
         self.oss_bucket_name: str = os.getenv("OSS_BUCKET_NAME", "")
         self.oss_base_url: str = os.getenv("OSS_BASE_URL", "")
 
-        # AI服务控制开关
-        self.use_real_llm: bool = os.getenv("USE_REAL_LLM", "false").lower() == "true"
-        self.use_real_stt: bool = os.getenv("USE_REAL_STT", "false").lower() == "true"
-        self.use_real_tts: bool = os.getenv("USE_REAL_TTS", "false").lower() == "true"
+        # AI服务控制开关 - 已删除，直接使用真实服务
+        # self.use_real_llm: bool = os.getenv("USE_REAL_LLM", "false").lower() == "true"
+        # self.use_real_stt: bool = os.getenv("USE_REAL_STT", "false").lower() == "true"
+        # self.use_real_tts: bool = os.getenv("USE_REAL_TTS", "false").lower() == "true"
 
         # Debug 打印
         print(f"[Config] ENV={self.environment}, DB={self.database_url}")
         print(f"[Config] LLM provider={self.llm_provider}, model={self.llm_model}, base_url={self.llm_base_url}")
         print(f"[Config] DashScope API key loaded={'YES' if self.dashscope_api_key else 'NO'}")
-        print(f"[Config] Real AI services - LLM: {self.use_real_llm}, STT: {self.use_real_stt}, TTS: {self.use_real_tts}")
+        print(f"[Config] Real AI services - LLM: True, STT: True, TTS: True")
 
 settings = Settings()

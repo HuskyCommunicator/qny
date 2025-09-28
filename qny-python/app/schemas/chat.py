@@ -16,6 +16,12 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
+class TTSRequest(BaseModel):
+    content: str
+    voice: str = "longxiaochun"
+    format: str = "mp3"
+
+
 class ChatMessageCreate(BaseModel):
     session_id: str
     role_id: Optional[int] = None

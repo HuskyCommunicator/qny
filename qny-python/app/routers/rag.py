@@ -6,15 +6,33 @@ from sqlalchemy.orm import Session
 from ..services.rag_service import rag, rebuild_from_db
 from ..core.db import get_db
 from ..models.chat import Document
-from ..services.doc_service import extract_text_from_pdf, extract_text_from_markdown, chunk_text
+from ..services.doc_service import extract_text_from_pdf, extract_text_from_markdown, extract_text_from_json, chunk_text
 
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
+@router.post("/index")
+def index_docs(doc_ids: List[str], documents: List[str], db: Session = Depends(get_db)):
+    if len(doc_ids) != len(documents):
+        return {"ok": False, "message": "doc_ids 与 documents 长度不一致"}
+    # 写入/更新数据库
+    for i, d_id in enumerate(doc_ids):
+        text = documents[i]
+        existed = db.query(Document).filter(Document.doc_id == d_id).first()
+        if existed:
+            existed.text = text
+        else:
+            db.add(Document(doc_id=d_id, text=text))
+    db.commit()
+    # 从 DB 重建索引
+    rows = db.query(Document.doc_id, Document.text).all()
+    rebuild_from_db(rows)
+    return {"ok": True, "count": len(doc_ids)}
+
+
 @router.post("/upsert")
 def upsert_docs(doc_ids: List[str], documents: List[str], db: Session = Depends(get_db)):
-    """索引或更新文档（支持新增和更新）"""
     if len(doc_ids) != len(documents):
         return {"ok": False, "message": "doc_ids 与 documents 长度不一致"}
     for i, d_id in enumerate(doc_ids):
@@ -45,15 +63,21 @@ async def upload_and_index(file: UploadFile = File(...), prefix: str = "upload/"
     data = await file.read()
     name = file.filename or "file"
     ext = (name.rsplit(".", 1)[-1] or "").lower()
+    
+    # 根据文件扩展名选择解析方法
     if ext in ("pdf",):
         text = extract_text_from_pdf(data)
     elif ext in ("md", "markdown"):
         text = extract_text_from_markdown(data)
+    elif ext in ("json", "jsonl"):
+        text = extract_text_from_json(data)
     else:
         # 默认尝试按 UTF-8 文本解析
         text = data.decode("utf-8", errors="ignore")
+    
     chunks = chunk_text(text, max_len=chunk_size)
     ids = [f"{prefix}{name}#p{i+1}" for i in range(len(chunks))]
+    
     # upsert 到 DB
     for i, d_id in enumerate(ids):
         txt = chunks[i]
@@ -65,7 +89,7 @@ async def upload_and_index(file: UploadFile = File(...), prefix: str = "upload/"
     db.commit()
     rows = db.query(Document.doc_id, Document.text).all()
     rebuild_from_db(rows)
-    return {"ok": True, "count": len(ids), "doc_ids": ids}
+    return {"ok": True, "count": len(ids), "doc_ids": ids, "file_type": ext, "extracted_text_preview": text[:200] + "..." if len(text) > 200 else text}
 
 
 @router.post("/search")

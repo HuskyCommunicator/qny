@@ -90,11 +90,15 @@ class ChatService:
 
     def get_session_messages(self, session_id: str, user_id: int, limit: int = 100, offset: int = 0) -> List[ChatMessage]:
         """获取会话的消息列表"""
+        # 检查session_id是否有效
+        if not session_id or session_id in ['{session_id}', '%7Bsession_id%7D']:
+            raise ValueError(f"无效的session_id: {session_id}")
+        
         # 验证会话权限
         session = self.get_session(session_id, user_id)
         if not session:
-            raise ValueError("会话不存在或无权限访问")
-
+            raise ValueError(f"会话不存在或无权限访问: session_id={session_id}, user_id={user_id}")
+        
         return self.db.query(ChatMessage).filter(
             ChatMessage.session_id == session_id
         ).order_by(ChatMessage.created_at.asc()).offset(offset).limit(limit).all()

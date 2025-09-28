@@ -49,7 +49,9 @@ instance.interceptors.response.use(
         case 401:
         case 405:
           ElMessage.error("登录已过期，请重新登录");
-          localStorage.removeItem("token");
+          localStorage.removeItem("qny-token");
+          localStorage.removeItem("qny-username");
+          localStorage.removeItem("qny-email");
           if (typeof router !== "undefined" && router.push) {
             router.push("/login");
           } else {

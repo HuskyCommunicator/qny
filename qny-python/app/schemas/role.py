@@ -8,7 +8,7 @@ class RoleCreate(BaseModel):
     """创建角色的请求数据"""
     name: constr(min_length=1, max_length=100) = Field(..., description="角色名称，长度1-100个字符")
     description: Optional[constr(max_length=500)] = Field(None, description="角色描述，最多500个字符")
-    system_prompt: constr(min_length=10, max_length=2000) = Field(..., description="角色系统提示词，长度10-2000个字符")
+    system_prompt: constr(min_length=5, max_length=2000) = Field(..., description="角色系统提示词，长度5-2000个字符")
     avatar_url: Optional[str] = Field(None, description="角色头像URL")
     is_public: bool = Field(True, description="是否为公开角色")
     config: Optional[Dict[str, Any]] = Field(None, description="角色配置参数")
@@ -40,7 +40,7 @@ class RoleUpdate(BaseModel):
     """更新角色的请求数据"""
     name: Optional[constr(min_length=1, max_length=100)] = Field(None, description="角色名称，长度1-100个字符")
     description: Optional[constr(max_length=500)] = Field(None, description="角色描述，最多500个字符")
-    system_prompt: Optional[constr(min_length=10, max_length=2000)] = Field(None, description="角色系统提示词，长度10-2000个字符")
+    system_prompt: Optional[constr(min_length=5, max_length=2000)] = Field(None, description="角色系统提示词，长度5-2000个字符")
     avatar_url: Optional[str] = Field(None, description="角色头像URL")
     is_public: Optional[bool] = Field(None, description="是否为公开角色")
     config: Optional[Dict[str, Any]] = Field(None, description="角色配置参数")
@@ -138,6 +138,7 @@ class RoleSearchParams(BaseModel):
 
 class RoleInfo(BaseModel):
     """角色信息（用于搜索和展示）"""
+    id: Optional[int] = Field(None, description="角色ID")
     name: str = Field(..., description="角色名称")
     display_name: Optional[str] = Field(None, description="显示名称")
     description: Optional[str] = Field(None, description="角色描述")
@@ -148,6 +149,8 @@ class RoleInfo(BaseModel):
     is_builtin: bool = Field(False, description="是否为内置角色")
     category: Optional[str] = Field(None, description="角色分类")
     tags: Optional[List[str]] = Field(None, description="角色标签")
+    is_public: Optional[bool] = Field(True, description="是否为公开角色")
+    created_at: Optional[datetime] = Field(None, description="创建时间")
 
 
 class RoleTemplateCreate(BaseModel):
@@ -155,7 +158,7 @@ class RoleTemplateCreate(BaseModel):
     name: constr(min_length=1, max_length=100) = Field(..., description="角色名称")
     display_name: Optional[constr(max_length=128)] = Field(None, description="显示名称")
     description: Optional[constr(max_length=500)] = Field(None, description="角色描述")
-    system_prompt: constr(min_length=10, max_length=2000) = Field(..., description="系统提示词")
+    system_prompt: constr(min_length=5, max_length=2000) = Field(..., description="系统提示词")
     avatar_url: Optional[str] = Field(None, description="头像URL")
     skills: Optional[str] = Field(None, description="技能列表（JSON字符串）")
     background: Optional[str] = Field(None, description="背景故事")
@@ -168,7 +171,7 @@ class RoleTemplateUpdate(BaseModel):
     """更新角色模板的请求数据"""
     display_name: Optional[constr(max_length=128)] = Field(None, description="显示名称")
     description: Optional[constr(max_length=500)] = Field(None, description="角色描述")
-    system_prompt: Optional[constr(min_length=10, max_length=2000)] = Field(None, description="系统提示词")
+    system_prompt: Optional[constr(min_length=5, max_length=2000)] = Field(None, description="系统提示词")
     avatar_url: Optional[str] = Field(None, description="头像URL")
     skills: Optional[str] = Field(None, description="技能列表（JSON字符串）")
     background: Optional[str] = Field(None, description="背景故事")
@@ -179,7 +182,7 @@ class RoleTemplateUpdate(BaseModel):
 
 class RoleTemplateOut(BaseModel):
     """角色模板响应数据"""
-    id: int
+    id: Optional[int] = None
     name: str
     display_name: Optional[str]
     description: Optional[str]
@@ -190,7 +193,7 @@ class RoleTemplateOut(BaseModel):
     personality: Optional[str]
     category: Optional[str]
     tags: Optional[List[str]]
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -198,13 +201,19 @@ class RoleTemplateOut(BaseModel):
 
 class RoleTemplate(BaseModel):
     """角色模板"""
+    id: Optional[int] = None
     name: constr(min_length=1, max_length=100) = Field(..., description="角色名称，长度1-100个字符")
+    display_name: Optional[str] = Field(None, description="显示名称")
     description: constr(max_length=500) = Field(..., description="角色描述，最多500个字符")
-    system_prompt: constr(min_length=10, max_length=2000) = Field(..., description="角色系统提示词，长度10-2000个字符")
+    system_prompt: constr(min_length=5, max_length=2000) = Field(..., description="角色系统提示词，长度5-2000个字符")
     avatar_url: Optional[str] = None
+    skills: Optional[str] = Field(None, description="技能列表")
+    background: Optional[str] = Field(None, description="背景故事")
+    personality: Optional[str] = Field(None, description="性格特点")
     config: Optional[Dict[str, Any]] = None
     tags: Optional[List[constr(max_length=20)]] = None
     category: Optional[constr(max_length=50)] = None
+    created_at: Optional[datetime] = None
 
     @validator('avatar_url')
     def validate_avatar_url(cls, v):
