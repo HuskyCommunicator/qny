@@ -94,13 +94,8 @@
 import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Delete, Loading } from "@element-plus/icons-vue";
-import {
-  getMyAgents,
-  getChatHistory,
-  getMySessions,
-  deleteSession as deleteSessionApi,
-} from "@/api/user";
-import { getChatMessagesAPI } from "@/api/chat";
+import { getMySessionsAPI, deleteSessionAPI } from "@/api/user";
+// import { getChatMessagesAPI } from "@/api/chat";
 
 const sessions = ref([]);
 const selectedSession = ref(null);
@@ -111,7 +106,7 @@ const loading = ref(false);
 const fetchSessions = async () => {
   try {
     loading.value = true;
-    const response = await getMySessions();
+    const response = await getMySessionsAPI();
     sessions.value = response.data || [];
   } catch (error) {
     console.error("获取会话列表失败:", error);
@@ -131,7 +126,7 @@ const selectSession = async (session) => {
 const fetchMessages = async (sessionId) => {
   try {
     loading.value = true;
-    const response = await getChatMessagesAPI(sessionId);
+    // const response = await getChatMessagesAPI(sessionId);
     messages.value = response.data || [];
   } catch (error) {
     console.error("获取消息失败:", error);
@@ -154,7 +149,7 @@ const deleteSession = async (sessionId) => {
       }
     );
 
-    await deleteSessionApi(sessionId);
+    await deleteSessionAPI(sessionId);
     ElMessage.success("删除成功");
 
     // 如果删除的是当前选中的会话，清空选择
